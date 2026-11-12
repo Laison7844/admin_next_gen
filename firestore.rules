@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // Admin Authorization Boundary
+    // =========================================================================
+    // The single authorized admin identity is anchored directly to the admin's
+    // Firebase Authentication UID. This prevents any other registered user from
+    // granting themselves administrative privileges.
+    // Replace 'NEXTGEN_ADMIN_PRIMARY_UID' with the admin's real Firebase UID.
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.uid == 'NEXTGEN_ADMIN_PRIMARY_UID' ||
+        // Configurable secondary check if custom claim or designated UID is used
+        request.auth.token.admin == true
+      );
+    }
+
+    // =========================================================================
+    // 1. CMS Drafts Collection (Admin Only - Zero Public Access)
+    // =========================================================================
+    // Contains working drafts, unpublished items, and staging revisions.
+    // Public users have NO read or write access under any circumstances.
+    match /cms_drafts/{draftId} {
+      allow read, write: if isAdmin();
+    }
+
+    // =========================================================================
+    // 2. Public Website Content Collections
+    // =========================================================================
+    // Public visitors can only read published documents.
+    // Only the authorized admin can create, update, or delete content.
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /programs/{programId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /faqs/{faqId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /gallery/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /site_sections/{sectionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // =========================================================================
+    // 3. Existing Enquiries Collection (Preserved Exactly)
+    // =========================================================================
+    match /enquiries/{phone} {
+      // The owner-only Android app does not sign in, so reads are public to
+      // Firebase clients that have this project's configuration.
+      allow get, list: if true;
+
+      // Enquiry submissions come from the public website after its mail API
+      // succeeds. Validate the shape so arbitrary collections cannot be read.
+      allow create, update: if request.auth != null || (
+        request.resource.data.keys().hasOnly([
+          'id', 'name', 'phone', 'program', 'message', 'status',
+          'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.phone == phone &&
+        request.resource.data.name is string &&
+        request.resource.data.program is string &&
+        request.resource.data.message is string &&
+        request.resource.data.status == true
+      );
+      allow delete: if isAdmin();
+    }
+  }
+}
+
