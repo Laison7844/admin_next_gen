@@ -102,6 +102,48 @@ class ContentOperationController extends StateNotifier<ContentOperationState> {
     }
   }
 
+  Future<bool> saveDraft({
+    required String id,
+    required String contentType,
+    required String title,
+    required Map<String, dynamic> data,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
+    try {
+      final existing = await _service.getDraft(id);
+      if (existing == null) {
+        await _service.createDraft(
+          id: id,
+          contentType: contentType,
+          title: title,
+          data: data,
+        );
+      } else {
+        await _service.updateDraft(
+          id: id,
+          title: title,
+          data: data,
+        );
+      }
+      _ref.invalidate(contentListProvider(contentType));
+      _ref.invalidate(contentItemProvider(id));
+      state = state.copyWith(
+        isLoading: false,
+        successMessage: 'Draft saved successfully.',
+      );
+      return true;
+    } on ContentException catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.message);
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'An unexpected error occurred while saving draft.',
+      );
+      return false;
+    }
+  }
+
   Future<bool> updateDraft({
     required String id,
     String? title,
@@ -133,10 +175,11 @@ class ContentOperationController extends StateNotifier<ContentOperationState> {
   Future<bool> publish({
     required String draftId,
     String? contentType,
+    DateTime? expectedUpdatedAt,
   }) async {
     state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
     try {
-      await _service.publish(draftId);
+      await _service.publish(draftId, expectedUpdatedAt: expectedUpdatedAt);
       _ref.invalidate(contentListProvider(contentType));
       _ref.invalidate(contentItemProvider(draftId));
       state = state.copyWith(

@@ -19,10 +19,13 @@ abstract class ContentRepository {
   Future<void> saveDraft(CmsContentItem item);
 
   /// Atomically publishes content:
-  /// 1. Copies `draft.data` into target public collection (e.g. `courses/{id}`).
+  /// 1. Exactly replaces the target public collection document (e.g. `courses/{id}`)
+  ///    with current draft data (removed fields/arrays disappear cleanly).
   /// 2. Updates `cms_drafts/{id}` with `publishStatus = published` and
   ///    `hasUnpublishedChanges = false`.
-  Future<void> publish(String draftId);
+  /// If [expectedUpdatedAt] is provided and the stored draft is newer, throws a
+  /// conflict exception to protect against concurrent tab overwrites.
+  Future<void> publish(String draftId, {DateTime? expectedUpdatedAt});
 
   /// Atomically unpublishes content:
   /// 1. Deletes document from public collection.
@@ -96,43 +99,58 @@ class FirestoreContentRepository implements ContentRepository {
   }
 
   @override
-  Future<void> publish(String draftId) async {
-    final draft = await getDraft(draftId);
-    if (draft == null) {
-      throw StateError('Cannot publish draft: item "$draftId" does not exist.');
-    }
+  Future<void> publish(String draftId, {DateTime? expectedUpdatedAt}) async {
+    final draftDocRef = _firestore.collection(draftsCollection).doc(draftId);
 
-    final publicCollection = draft.publicCollection;
-    final publicDocRef = _firestore.collection(publicCollection).doc(draft.id);
-    final draftDocRef = _firestore.collection(draftsCollection).doc(draft.id);
+    await _firestore.runTransaction((transaction) async {
+      final draftSnapshot = await transaction.get(draftDocRef);
+      if (!draftSnapshot.exists || draftSnapshot.data() == null) {
+        throw StateError(
+            'Cannot publish draft: item "$draftId" does not exist.');
+      }
 
-    final now = DateTime.now();
+      final draft = CmsContentItem.fromFirestore(
+        draftSnapshot.data()!,
+        draftSnapshot.id,
+      );
 
-    final publishedItem = draft.copyWith(
-      publishStatus: PublishStatus.published,
-      hasUnpublishedChanges: false,
-      publishedAt: now,
-      updatedAt: now,
-    );
+      // Concurrent modification safety check:
+      // If expectedUpdatedAt is passed and stored draft was modified after that time, abort.
+      if (expectedUpdatedAt != null &&
+          draft.updatedAt.difference(expectedUpdatedAt).inMilliseconds > 500) {
+        throw StateError(
+          'Concurrent edit detected: This item was updated in another session at '
+          '${draft.updatedAt.toIso8601String()}. Please reload before publishing.',
+        );
+      }
 
-    // Atomic batch write ensuring public doc and draft metadata update together
-    final batch = _firestore.batch();
+      final publicCollection = draft.publicCollection;
+      final publicDocRef =
+          _firestore.collection(publicCollection).doc(draft.id);
 
-    // 1. Write clean payload to public collection
-    batch.set(
-      publicDocRef,
-      publishedItem.toPublicPayload(),
-      SetOptions(merge: true),
-    );
+      final now = DateTime.now();
 
-    // 2. Update draft record
-    batch.set(
-      draftDocRef,
-      publishedItem.toFirestore(),
-      SetOptions(merge: true),
-    );
+      final publishedItem = draft.copyWith(
+        publishStatus: PublishStatus.published,
+        hasUnpublishedChanges: false,
+        publishedAt: now,
+        updatedAt: now,
+      );
 
-    await batch.commit();
+      // 1. EXACT REPLACEMENT of public document (no merge: true).
+      // Any fields or array elements deleted from the draft are removed from the public site.
+      transaction.set(
+        publicDocRef,
+        publishedItem.toPublicPayload(),
+      );
+
+      // 2. Update draft record in CMS
+      transaction.set(
+        draftDocRef,
+        publishedItem.toFirestore(),
+        SetOptions(merge: true),
+      );
+    });
   }
 
   @override

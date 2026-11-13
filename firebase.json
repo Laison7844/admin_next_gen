@@ -1,5 +1,9 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
+    "target": "cms",
     "public": "build/web",
     "ignore": [
       "firebase.json",

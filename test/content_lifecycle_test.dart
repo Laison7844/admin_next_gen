@@ -46,10 +46,17 @@ class FakeContentRepository implements ContentRepository {
   }
 
   @override
-  Future<void> publish(String draftId) async {
+  Future<void> publish(String draftId, {DateTime? expectedUpdatedAt}) async {
     final draft = drafts[draftId];
     if (draft == null) {
       throw StateError('Draft $draftId does not exist');
+    }
+
+    if (expectedUpdatedAt != null &&
+        draft.updatedAt.difference(expectedUpdatedAt).inMilliseconds > 500) {
+      throw StateError(
+        'Concurrent edit detected: item was updated after expected timestamp',
+      );
     }
 
     final publishedItem = draft.copyWith(
@@ -59,7 +66,7 @@ class FakeContentRepository implements ContentRepository {
       updatedAt: DateTime.now(),
     );
 
-    // Atomic simulation: write to public, update draft
+    // Atomic simulation: exact replacement in public, update draft
     publicDocs[_publicPath(draft.publicCollection, draft.id)] =
         publishedItem.toPublicPayload();
     drafts[draftId] = publishedItem;
@@ -104,7 +111,10 @@ void main() {
       expect(ContentType.siteSections.publicCollection, 'site_sections');
 
       expect(ContentType.fromKey('programs'), ContentType.programs);
-      expect(ContentType.fromKey('unknown_key'), ContentType.courses);
+      expect(ContentType.fromKey('site_sections'), ContentType.siteSections);
+      expect(ContentType.fromKey('siteSections'), ContentType.siteSections);
+      expect(() => ContentType.fromKey('unknown_key'), throwsArgumentError);
+      expect(ContentType.tryFromKey('unknown_key'), isNull);
     });
 
     test('PublishStatus correctly indicates draft vs published', () {
@@ -338,11 +348,9 @@ void main() {
   });
 
   group('Phase 2 - Admin Authorization Rules Logic Tests', () {
-    test('AdminConfig checks email and UID match without letting users self-grant',
-        () {
-      // Testing AdminConfig methods
-      expect(AdminConfig.authorizedAdminEmail, 'admin@nextgen.edu');
-      expect(AdminConfig.authorizedAdminUid, isNotEmpty);
+    test('AdminConfig checks UID match without letting users self-grant', () {
+      expect(AdminConfig.authorizedAdminUid, 'p6awFfdX9jRKAScGwvSU9OMXjm72');
+      expect(AdminConfig.isAuthorizedAdmin(null), isFalse);
     });
   });
 }

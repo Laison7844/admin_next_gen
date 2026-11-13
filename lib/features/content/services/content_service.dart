@@ -147,9 +147,12 @@ class ContentService {
   }
 
   /// Publishes draft changes to the public website collection atomically.
-  Future<void> publish(String draftId) async {
+  /// If [expectedUpdatedAt] is passed, aborts if another session edited the draft.
+  Future<void> publish(String draftId, {DateTime? expectedUpdatedAt}) async {
     try {
-      await repository.publish(draftId);
+      await repository.publish(draftId, expectedUpdatedAt: expectedUpdatedAt);
+    } on ContentException {
+      rethrow;
     } catch (e) {
       throw ContentException('Failed to publish content: ${e.toString()}');
     }

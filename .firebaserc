@@ -1,6 +1,14 @@
 {
   "projects": {
     "default": "next-gen-excellence"
+  },
+  "targets": {
+    "next-gen-excellence": {
+      "hosting": {
+        "cms": [
+          "admin-next-gen-excellence"
+        ]
+      }
+    }
   }
 }
-

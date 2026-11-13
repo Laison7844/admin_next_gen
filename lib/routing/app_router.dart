@@ -9,6 +9,10 @@ import '../features/dashboard/presentation/admin_shell.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 import '../features/dashboard/presentation/models/nav_item.dart';
 import '../features/dashboard/presentation/placeholder_screen.dart';
+import '../features/enquiries/presentation/enquiry_list_screen.dart';
+import '../features/home_cms/models/home_section_definition.dart';
+import '../features/home_cms/presentation/home_cms_screen.dart';
+import '../features/home_cms/presentation/standalone_section_screen.dart';
 import 'route_paths.dart';
 
 /// Helper to bridge a Dart Stream to a Flutter Listenable for GoRouter.
@@ -73,8 +77,55 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: RoutePaths.dashboard,
             builder: (context, state) => const DashboardScreen(),
           ),
+          GoRoute(
+            path: RoutePaths.home,
+            builder: (context, state) => const HomeCmsScreen(),
+          ),
+          GoRoute(
+            path: RoutePaths.about,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('about_us'),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.courses,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('courses'),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.programs,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('programs'),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.gallery,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('gallery'),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.faqs,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('faqs'),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.settings,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('contact_footer'),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.enquiries,
+            builder: (context, state) => const EnquiryListScreen(),
+          ),
+          // Remaining non-implemented modules stay as placeholders
           ...NavItem.items
-              .where((item) => item.route != RoutePaths.dashboard)
+              .where((item) =>
+                  item.route == RoutePaths.testimonials ||
+                  item.route == RoutePaths.mediaLibrary)
               .map(
                 (item) => GoRoute(
                   path: item.route,

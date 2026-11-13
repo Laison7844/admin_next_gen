@@ -1,11 +1,12 @@
 # NextGen Excellence Academy – CMS Firestore Security Rules Plan (Phase 2)
 
-## 1. Security Architecture & Admin Authorization Boundary
+## 1. Single Administrator Authorization Boundary
 
-In accordance with Phase 2 decisions:
-- **Primary Security Boundary:** The Firebase Authentication UID (`request.auth.uid`) is the exclusive gatekeeper in Firestore Security Rules.
-- **Single-Admin Model:** The authorized UID is hardcoded or configured in the rule definition. No client can alter or grant themselves administrative claims or roles.
-- **Secondary Client Validation:** The client application validates `currentUser.email` as an additional guard before routing to CMS views, but the absolute database boundary is the Firestore rules rule engine.
+In accordance with Phase 2 review requirements:
+- **Sole Security Boundary:** The Firebase Authentication UID (`request.auth.uid`) is the exclusive gatekeeper in Firestore Security Rules.
+- **No Custom Claims:** Custom claims (`request.auth.token.admin`) have been removed to enforce that only the single designated administrative account can ever execute CMS write actions.
+- **No Self-Assignment:** Users cannot grant themselves admin access because the UID is directly matched in the rules engine.
+- **Consistent Configuration:** The exact same UID (`p6awFfdX9jRKAScGwvSU9OMXjm72`) is configured in the CMS client app (`AdminConfig.authorizedAdminUid`).
 
 ```javascript
 rules_version = '2';
@@ -13,12 +14,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAdmin() {
-      return request.auth != null && (
-        request.auth.uid == 'NEXTGEN_ADMIN_PRIMARY_UID' ||
-        request.auth.token.admin == true
-      );
+      return request.auth != null &&
+          request.auth.uid == 'p6awFfdX9jRKAScGwvSU9OMXjm72';
     }
-    ...
 ```
 
 ## 2. Partitioned Collection Access Matrix
@@ -56,4 +54,4 @@ match /enquiries/{phone} {
 
 ## 4. Production Deployment Status
 > [!IMPORTANT]
-> **NO RULES HAVE BEEN DEPLOYED.** As requested in the Phase 2 instructions, these security rules are prepared in `firestore.rules` and documented here for review. They will be deployed only when explicitly authorized after end-to-end integration with the public website.
+> **NO RULES HAVE BEEN DEPLOYED.** As requested in the instructions, these security rules are prepared in `firestore.rules` and documented here for review. They will be deployed only when explicitly authorized.
