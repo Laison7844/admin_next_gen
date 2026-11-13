@@ -6,3 +6,4 @@ Future<bool> launchPhoneDialer(String phone) async {
   await Clipboard.setData(ClipboardData(text: clean));
   return true;
 }
+

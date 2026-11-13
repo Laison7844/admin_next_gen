@@ -108,3 +108,4 @@ final enquiryOperationControllerProvider =
   final repository = ref.watch(enquiryRepositoryProvider);
   return EnquiryOperationController(repository, ref);
 });
+
