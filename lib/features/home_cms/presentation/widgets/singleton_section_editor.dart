@@ -8,6 +8,7 @@ import '../../../content/providers/content_provider.dart';
 import '../../models/home_section_definition.dart';
 import 'publish_status_badge.dart';
 import 'section_preview_dialog.dart';
+import '../../../media/presentation/widgets/media_picker_dialog.dart';
 
 class SingletonSectionEditor extends ConsumerStatefulWidget {
   final HomeSectionDefinition section;
@@ -69,7 +70,7 @@ class _SingletonSectionEditorState
       setState(() => _isDirty = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${widget.section.title} draft saved successfully.'),
+          content: Text('${widget.section.title} changes saved successfully.'),
           backgroundColor: AppColors.successGreen,
         ),
       );
@@ -80,9 +81,9 @@ class _SingletonSectionEditorState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Publish Section to Live Website?'),
+        title: const Text('Publish Section to Website?'),
         content: Text(
-          'This will update the public "${widget.section.title}" on next-gen-excellence.web.app immediately.',
+          'This will update the public "${widget.section.title}" on the website immediately.',
         ),
         actions: [
           TextButton(
@@ -95,7 +96,7 @@ class _SingletonSectionEditorState
               foregroundColor: AppColors.primaryNavy,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Publish Now'),
+            child: const Text('Publish to Website'),
           ),
         ],
       ),
@@ -117,7 +118,7 @@ class _SingletonSectionEditorState
     if (mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${widget.section.title} is now live on the website!'),
+          content: Text('${widget.section.title} is now published to the website!'),
           backgroundColor: AppColors.successGreen,
         ),
       );
@@ -128,9 +129,9 @@ class _SingletonSectionEditorState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Unpublish Section?'),
+        title: const Text('Remove Section from Website?'),
         content: Text(
-          'This will remove "${widget.section.title}" from the public website while retaining your CMS draft.',
+          'This will remove "${widget.section.title}" from the public website while retaining your unpublished changes.',
         ),
         actions: [
           TextButton(
@@ -143,7 +144,7 @@ class _SingletonSectionEditorState
               foregroundColor: AppColors.surfaceWhite,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Unpublish'),
+            child: const Text('Remove from Website'),
           ),
         ],
       ),
@@ -160,7 +161,7 @@ class _SingletonSectionEditorState
     if (mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${widget.section.title} has been unpublished.'),
+          content: Text('${widget.section.title} has been removed from the website.'),
           backgroundColor: AppColors.mediumNavy,
         ),
       );
@@ -193,7 +194,7 @@ class _SingletonSectionEditorState
       error: (err, stack) => Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Text('Error loading draft: $err',
+          child: Text('Unable to load content: $err',
               style: const TextStyle(color: AppColors.errorRed)),
         ),
       ),
@@ -303,7 +304,7 @@ class _SingletonSectionEditorState
                         ),
                       )
                     : const Icon(Icons.save_outlined, size: 18),
-                label: const Text('Save Draft'),
+                label: const Text('Save Changes'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryNavy,
                   foregroundColor: AppColors.surfaceWhite,
@@ -313,7 +314,7 @@ class _SingletonSectionEditorState
               ),
               ElevatedButton.icon(
                 icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-                label: const Text('Publish Live'),
+                label: const Text('Publish to Website'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGold,
                   foregroundColor: AppColors.primaryNavy,
@@ -326,7 +327,7 @@ class _SingletonSectionEditorState
                 OutlinedButton.icon(
                   icon: const Icon(Icons.cloud_off_outlined,
                       size: 18, color: AppColors.errorRed),
-                  label: const Text('Unpublish',
+                  label: const Text('Remove from Website',
                       style: TextStyle(color: AppColors.errorRed)),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.errorRed),
@@ -366,7 +367,7 @@ class _SingletonSectionEditorState
               foregroundColor: AppColors.surfaceWhite,
             ),
             onPressed: opState.isLoading ? null : () => _handleSaveDraft(draft),
-            child: const Text('Save Draft'),
+            child: const Text('Save Changes'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -436,31 +437,30 @@ class _SingletonSectionEditorState
           onSaved: (val) => _formData['description'] = val,
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _textInput(
-                label: 'Primary Button Label',
-                initialValue: _formData['primaryButtonLabel']?.toString() ?? '',
-                onSaved: (val) => _formData['primaryButtonLabel'] = val,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _textInput(
-                label: 'Secondary Button Label',
-                initialValue:
-                    _formData['secondaryButtonLabel']?.toString() ?? '',
-                onSaved: (val) => _formData['secondaryButtonLabel'] = val,
-              ),
-            ),
-          ],
+        _responsiveRow(
+          _textInput(
+            label: 'Primary Button Label',
+            initialValue: _formData['primaryButtonLabel']?.toString() ?? '',
+            onSaved: (val) => _formData['primaryButtonLabel'] = val,
+          ),
+          _textInput(
+            label: 'Secondary Button Label',
+            initialValue:
+                _formData['secondaryButtonLabel']?.toString() ?? '',
+            onSaved: (val) => _formData['secondaryButtonLabel'] = val,
+          ),
         ),
         const SizedBox(height: 16),
         _textInput(
           label: 'Feature Chips (Comma-separated)',
-          initialValue:
-              ((_formData['featureChips'] as List?)?.join(', ')) ?? '',
+          initialValue: ((_formData['featureChips'] as List?)?.map((c) {
+            if (c is Map) {
+              final t = c['title']?.toString() ?? '';
+              final s = c['subtitle']?.toString() ?? '';
+              return s.isNotEmpty ? '$t ($s)' : t;
+            }
+            return c.toString();
+          }).join(', ')) ?? '',
           onSaved: (val) {
             _formData['featureChips'] = (val ?? '')
                 .split(',')
@@ -470,9 +470,11 @@ class _SingletonSectionEditorState
           },
         ),
         const SizedBox(height: 16),
-        _textInput(
+        _imageInput(
           label: 'Hero Illustration / Image URL',
           initialValue: _formData['heroImage']?.toString() ?? '',
+          fieldKey: 'heroImage',
+          preferredFolder: 'homepage',
           onSaved: (val) => _formData['heroImage'] = val,
         ),
       ],
@@ -481,10 +483,12 @@ class _SingletonSectionEditorState
 
   // 2. FEATURE HIGHLIGHTS EDITOR
   Widget _buildFeatureHighlightsEditor() {
-    final features = List<Map<String, dynamic>>.from(
-      (_formData['features'] as List?)?.map((e) => Map<String, dynamic>.from(e)) ??
-          [],
-    );
+    final rawFeatures = (_formData['features'] as List?) ?? [];
+    final features = rawFeatures
+        .map((e) => e is Map
+            ? Map<String, dynamic>.from(e)
+            : <String, dynamic>{'title': e.toString(), 'isVisible': true})
+        .toList();
 
     return _cardContainer(
       title: 'Feature Highlights (6 Pillars)',
@@ -585,10 +589,12 @@ class _SingletonSectionEditorState
 
   // 3. ABOUT EDITOR
   Widget _buildAboutEditor() {
-    final pillars = List<Map<String, dynamic>>.from(
-      (_formData['pillars'] as List?)?.map((e) => Map<String, dynamic>.from(e)) ??
-          [],
-    );
+    final rawPillars = (_formData['pillars'] as List?) ?? [];
+    final pillars = rawPillars
+        .map((e) => e is Map
+            ? Map<String, dynamic>.from(e)
+            : <String, dynamic>{'title': e.toString(), 'description': ''})
+        .toList();
 
     return _cardContainer(
       title: 'About Us Section Settings',
@@ -679,14 +685,38 @@ class _SingletonSectionEditorState
 
   // 4. WHY NEXTGEN EDITOR
   Widget _buildWhyNextGenEditor() {
-    final reasons = List<Map<String, dynamic>>.from(
-      (_formData['reasons'] as List?)?.map((e) => Map<String, dynamic>.from(e)) ??
-          [],
-    );
+    final rawList = (_formData['reasons'] as List?) ?? [];
+    final reasons = <String>[];
+    for (final item in rawList) {
+      if (item is Map) {
+        final t = item['title']?.toString() ?? '';
+        final d = item['description']?.toString() ?? '';
+        if (t.isNotEmpty && d.isNotEmpty) {
+          reasons.add('$t: $d');
+        } else if (t.isNotEmpty) {
+          reasons.add(t);
+        } else {
+          reasons.add(item.values.join(' '));
+        }
+      } else if (item != null) {
+        reasons.add(item.toString());
+      }
+    }
 
     return _cardContainer(
       title: 'Why NextGen Section Settings',
       children: [
+        _textInput(
+          label: 'Category Tag',
+          initialValue: _formData['category']?.toString() ??
+              _formData['badge']?.toString() ??
+              '',
+          onSaved: (val) {
+            _formData['category'] = val;
+            _formData['badge'] = val;
+          },
+        ),
+        const SizedBox(height: 16),
         _textInput(
           label: 'Section Heading',
           initialValue: _formData['title']?.toString() ?? '',
@@ -699,11 +729,12 @@ class _SingletonSectionEditorState
           onSaved: (val) => _formData['subtitle'] = val,
         ),
         const SizedBox(height: 24),
-        Text('Core Differentiators', style: AppTypography.headingSmall()),
+        Text('Core Differentiators & Teaching Reasons',
+            style: AppTypography.headingSmall()),
         const SizedBox(height: 12),
         for (int i = 0; i < reasons.length; i++) ...[
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.only(bottom: 10),
             decoration: BoxDecoration(
               color: AppColors.backgroundLight,
@@ -711,55 +742,94 @@ class _SingletonSectionEditorState
               border: Border.all(color: AppColors.borderLight),
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        initialValue: reasons[i]['title']?.toString() ?? '',
-                        decoration: InputDecoration(
-                          labelText: 'Reason #${i + 1} Title',
-                          isDense: true,
-                        ),
-                        onChanged: (val) {
-                          reasons[i]['title'] = val;
-                          _formData['reasons'] = reasons;
-                          _markDirty();
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        initialValue:
-                            reasons[i]['description']?.toString() ?? '',
-                        maxLines: 2,
-                        decoration: const InputDecoration(
-                          labelText: 'Description',
-                          isDense: true,
-                        ),
-                        onChanged: (val) {
-                          reasons[i]['description'] = val;
-                          _formData['reasons'] = reasons;
-                          _markDirty();
-                        },
-                      ),
-                    ],
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: AppColors.primaryNavy,
+                  child: Text(
+                    '${i + 1}',
+                    style: const TextStyle(
+                      color: AppColors.surfaceWhite,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    key: ValueKey('why_reason_${i}_${reasons[i].hashCode}'),
+                    initialValue: reasons[i],
+                    decoration: InputDecoration(
+                      labelText: 'Reason #${i + 1}',
+                      hintText:
+                          'e.g. Concept clarity through simple explanations',
+                      isDense: true,
+                    ),
+                    onChanged: (val) {
+                      reasons[i] = val;
+                      _formData['reasons'] = reasons;
+                      _markDirty();
+                    },
+                    onSaved: (val) {
+                      if (val != null && i < reasons.length) {
+                        reasons[i] = val;
+                        _formData['reasons'] = reasons;
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      size: 20, color: AppColors.errorRed),
+                  tooltip: 'Remove Reason',
+                  onPressed: () {
+                    setState(() {
+                      reasons.removeAt(i);
+                      _formData['reasons'] = reasons;
+                      _markDirty();
+                    });
+                  },
                 ),
               ],
             ),
           ),
         ],
+        const SizedBox(height: 6),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('Add Reason / Differentiator'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryNavy,
+            foregroundColor: AppColors.surfaceWhite,
+          ),
+          onPressed: () {
+            setState(() {
+              reasons.add('New core differentiator');
+              _formData['reasons'] = reasons;
+              _markDirty();
+            });
+          },
+        ),
       ],
     );
   }
 
   // 5. LEARNING MODES EDITOR
   Widget _buildLearningModesEditor() {
-    final modes = List<Map<String, dynamic>>.from(
-      (_formData['modes'] as List?)?.map((e) => Map<String, dynamic>.from(e)) ??
-          [],
-    );
+    final rawModes = (_formData['modes'] as List?) ?? [];
+    final modes = rawModes
+        .map((e) => e is Map
+            ? Map<String, dynamic>.from(e)
+            : <String, dynamic>{
+                'title': e.toString(),
+                'badge': '',
+                'description': '',
+                'image': '',
+              })
+        .toList();
 
     return _cardContainer(
       title: 'Learning Modes Settings',
@@ -839,7 +909,31 @@ class _SingletonSectionEditorState
                   },
                 ),
                 const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Mode Image / Asset URL',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    TextButton.icon(
+                      icon: const Icon(Icons.photo_library_outlined, size: 14),
+                      label: const Text('Media Library', style: TextStyle(fontSize: 12)),
+                      onPressed: () async {
+                        final selected = await MediaPickerDialog.show(
+                          context,
+                          initialSelectedUrl: modes[i]['image']?.toString(),
+                          preferredFolder: 'homepage',
+                        );
+                        if (selected != null) {
+                          modes[i]['image'] = selected.downloadUrl;
+                          _formData['modes'] = modes;
+                          _markDirty();
+                        }
+                      },
+                    ),
+                  ],
+                ),
                 TextFormField(
+                  key: ValueKey(modes[i]['image']?.toString() ?? ''),
                   initialValue: modes[i]['image']?.toString() ?? '',
                   decoration: const InputDecoration(
                     labelText: 'Mode Asset / Image URL',
@@ -883,9 +977,11 @@ class _SingletonSectionEditorState
           onSaved: (val) => _formData['subtitle'] = val,
         ),
         const SizedBox(height: 16),
-        _textInput(
+        _imageInput(
           label: 'Pledge Document / Certificate Image Asset URL',
           initialValue: _formData['pledgeDocumentImage']?.toString() ?? '',
+          fieldKey: 'pledgeDocumentImage',
+          preferredFolder: 'homepage',
           onSaved: (val) => _formData['pledgeDocumentImage'] = val,
         ),
       ],
@@ -894,10 +990,19 @@ class _SingletonSectionEditorState
 
   // 7. ASSESSMENTS EDITOR
   Widget _buildAssessmentsEditor() {
-    final cards = List<Map<String, dynamic>>.from(
-      (_formData['cards'] as List?)?.map((e) => Map<String, dynamic>.from(e)) ??
-          [],
-    );
+    final rawCards = (_formData['evaluationCards'] as List?) ??
+        (_formData['cards'] as List?) ??
+        (_formData['items'] as List?) ??
+        [];
+    final cards = rawCards
+        .map((e) => e is Map
+            ? Map<String, dynamic>.from(e)
+            : <String, dynamic>{
+                'title': e.toString(),
+                'subtitle': '',
+                'description': '',
+              })
+        .toList();
 
     return _cardContainer(
       title: 'Assessments & Evaluation Cards',
@@ -954,30 +1059,67 @@ class _SingletonSectionEditorState
                         onChanged: (val) {
                           cards[i]['title'] = val;
                           _formData['cards'] = cards;
+                          _formData['evaluationCards'] = cards;
                           _markDirty();
                         },
                       ),
                       const SizedBox(height: 8),
                       TextFormField(
-                        initialValue: cards[i]['description']?.toString() ?? '',
+                        initialValue: (cards[i]['subtitle'] ?? cards[i]['description'])?.toString() ?? '',
                         maxLines: 2,
                         decoration: const InputDecoration(
-                          labelText: 'Description',
+                          labelText: 'Description / Subtitle',
                           isDense: true,
                         ),
                         onChanged: (val) {
+                          cards[i]['subtitle'] = val;
                           cards[i]['description'] = val;
                           _formData['cards'] = cards;
+                          _formData['evaluationCards'] = cards;
                           _markDirty();
                         },
                       ),
                     ],
                   ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      size: 20, color: AppColors.errorRed),
+                  tooltip: 'Remove Card',
+                  onPressed: () {
+                    setState(() {
+                      cards.removeAt(i);
+                      _formData['cards'] = cards;
+                      _formData['evaluationCards'] = cards;
+                      _markDirty();
+                    });
+                  },
+                ),
               ],
             ),
           ),
         ],
+        const SizedBox(height: 6),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('Add Evaluation Step'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryNavy,
+            foregroundColor: AppColors.surfaceWhite,
+          ),
+          onPressed: () {
+            setState(() {
+              cards.add({
+                'title': 'New Evaluation Step',
+                'subtitle': 'Description of this evaluation step',
+                'description': 'Description of this evaluation step',
+              });
+              _formData['cards'] = cards;
+              _formData['evaluationCards'] = cards;
+              _markDirty();
+            });
+          },
+        ),
       ],
     );
   }
@@ -1025,31 +1167,24 @@ class _SingletonSectionEditorState
     return _cardContainer(
       title: 'Contact Information & Footer Details',
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _textInput(
-                label: 'Official Phone Numbers (Comma-separated)',
-                initialValue:
-                    ((_formData['phoneNumbers'] as List?)?.join(', ')) ?? '',
-                onSaved: (val) {
-                  _formData['phoneNumbers'] = (val ?? '')
-                      .split(',')
-                      .map((e) => e.trim())
-                      .where((e) => e.isNotEmpty)
-                      .toList();
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _textInput(
-                label: 'Official Contact Email',
-                initialValue: _formData['email']?.toString() ?? '',
-                onSaved: (val) => _formData['email'] = val,
-              ),
-            ),
-          ],
+        _responsiveRow(
+          _textInput(
+            label: 'Official Phone Numbers (Comma-separated)',
+            initialValue:
+                ((_formData['phoneNumbers'] as List?)?.join(', ')) ?? '',
+            onSaved: (val) {
+              _formData['phoneNumbers'] = (val ?? '')
+                  .split(',')
+                  .map((e) => e.trim())
+                  .where((e) => e.isNotEmpty)
+                  .toList();
+            },
+          ),
+          _textInput(
+            label: 'Official Contact Email',
+            initialValue: _formData['email']?.toString() ?? '',
+            onSaved: (val) => _formData['email'] = val,
+          ),
         ),
         const SizedBox(height: 16),
         _textInput(
@@ -1068,68 +1203,54 @@ class _SingletonSectionEditorState
         const SizedBox(height: 24),
         Text('Social Media Links', style: AppTypography.headingSmall()),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _textInput(
-                label: 'Facebook Link',
-                initialValue:
-                    _formData['socialLinks']?['facebook']?.toString() ?? '',
-                onSaved: (val) {
-                  _formData['socialLinks'] = {
-                    ...(_formData['socialLinks'] as Map? ?? {}),
-                    'facebook': val,
-                  };
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _textInput(
-                label: 'Instagram Link',
-                initialValue:
-                    _formData['socialLinks']?['instagram']?.toString() ?? '',
-                onSaved: (val) {
-                  _formData['socialLinks'] = {
-                    ...(_formData['socialLinks'] as Map? ?? {}),
-                    'instagram': val,
-                  };
-                },
-              ),
-            ),
-          ],
+        _responsiveRow(
+          _textInput(
+            label: 'Facebook Link',
+            initialValue:
+                _formData['socialLinks']?['facebook']?.toString() ?? '',
+            onSaved: (val) {
+              _formData['socialLinks'] = {
+                ...(_formData['socialLinks'] as Map? ?? {}),
+                'facebook': val,
+              };
+            },
+          ),
+          _textInput(
+            label: 'Instagram Link',
+            initialValue:
+                _formData['socialLinks']?['instagram']?.toString() ?? '',
+            onSaved: (val) {
+              _formData['socialLinks'] = {
+                ...(_formData['socialLinks'] as Map? ?? {}),
+                'instagram': val,
+              };
+            },
+          ),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _textInput(
-                label: 'YouTube Link',
-                initialValue:
-                    _formData['socialLinks']?['youtube']?.toString() ?? '',
-                onSaved: (val) {
-                  _formData['socialLinks'] = {
-                    ...(_formData['socialLinks'] as Map? ?? {}),
-                    'youtube': val,
-                  };
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _textInput(
-                label: 'WhatsApp Number / Link',
-                initialValue:
-                    _formData['socialLinks']?['whatsapp']?.toString() ?? '',
-                onSaved: (val) {
-                  _formData['socialLinks'] = {
-                    ...(_formData['socialLinks'] as Map? ?? {}),
-                    'whatsapp': val,
-                  };
-                },
-              ),
-            ),
-          ],
+        _responsiveRow(
+          _textInput(
+            label: 'YouTube Link',
+            initialValue:
+                _formData['socialLinks']?['youtube']?.toString() ?? '',
+            onSaved: (val) {
+              _formData['socialLinks'] = {
+                ...(_formData['socialLinks'] as Map? ?? {}),
+                'youtube': val,
+              };
+            },
+          ),
+          _textInput(
+            label: 'WhatsApp Number / Link',
+            initialValue:
+                _formData['socialLinks']?['whatsapp']?.toString() ?? '',
+            onSaved: (val) {
+              _formData['socialLinks'] = {
+                ...(_formData['socialLinks'] as Map? ?? {}),
+                'whatsapp': val,
+              };
+            },
+          ),
         ),
       ],
     );
@@ -1206,6 +1327,105 @@ class _SingletonSectionEditorState
       ),
       onChanged: (_) => _markDirty(),
       onSaved: onSaved,
+    );
+  }
+
+  Widget _responsiveRow(Widget first, Widget second) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 600) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              first,
+              const SizedBox(height: 16),
+              second,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: first),
+            const SizedBox(width: 16),
+            Expanded(child: second),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _imageInput({
+    required String label,
+    required String initialValue,
+    required String fieldKey,
+    required void Function(String?) onSaved,
+    String preferredFolder = 'general',
+  }) {
+    return StatefulBuilder(
+      builder: (context, setLocalState) {
+        final currentVal = _formData[fieldKey]?.toString() ?? initialValue;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                TextButton.icon(
+                  icon: const Icon(Icons.photo_library_outlined, size: 14),
+                  label: const Text('Media Library', style: TextStyle(fontSize: 12)),
+                  onPressed: () async {
+                    final selected = await MediaPickerDialog.show(
+                      context,
+                      initialSelectedUrl: currentVal,
+                      preferredFolder: preferredFolder,
+                    );
+                    if (selected != null) {
+                      setLocalState(() {
+                        _formData[fieldKey] = selected.downloadUrl;
+                      });
+                      _markDirty();
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            TextFormField(
+              key: ValueKey(currentVal),
+              initialValue: currentVal,
+              decoration: InputDecoration(
+                hintText: 'https://firebasestorage.googleapis.com/... or assets/images/...',
+                filled: true,
+                fillColor: AppColors.backgroundLight,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.borderLight),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.borderLight),
+                ),
+              ),
+              onChanged: (val) {
+                _formData[fieldKey] = val;
+                _markDirty();
+              },
+              onSaved: onSaved,
+            ),
+          ],
+        );
+      },
     );
   }
 }

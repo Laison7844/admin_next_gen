@@ -69,6 +69,15 @@ class ContentService {
     }
   }
 
+  /// Fetches the set of document IDs currently present in the public collection.
+  Future<Set<String>> getPublishedDocIds(String contentType) async {
+    try {
+      return await repository.getPublishedDocIds(contentType);
+    } catch (e) {
+      return const {};
+    }
+  }
+
   /// Creates a brand-new content draft.
   Future<CmsContentItem> createDraft({
     required String id,

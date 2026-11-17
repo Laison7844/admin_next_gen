@@ -38,7 +38,7 @@ class PublishStatusBadge extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              'LIVE',
+              'Published',
               style: AppTypography.bodySmall(
                 color: AppColors.successGreen,
               ).copyWith(fontWeight: FontWeight.bold, fontSize: 11),
@@ -71,7 +71,7 @@ class PublishStatusBadge extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              'UNPUBLISHED CHANGES',
+              'Changes Not Saved',
               style: AppTypography.bodySmall(
                 color: AppColors.warningOrange,
               ).copyWith(fontWeight: FontWeight.bold, fontSize: 10.5),
@@ -102,7 +102,7 @@ class PublishStatusBadge extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            'DRAFT ONLY',
+            'Unpublished',
             style: AppTypography.bodySmall(
               color: AppColors.textSecondary,
             ).copyWith(fontWeight: FontWeight.bold, fontSize: 11),
@@ -112,4 +112,3 @@ class PublishStatusBadge extends StatelessWidget {
     );
   }
 }
-

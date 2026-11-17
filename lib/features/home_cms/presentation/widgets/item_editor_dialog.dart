@@ -4,6 +4,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../content/models/cms_content_item.dart';
 import '../../../content/models/content_type.dart';
 import '../../../content/models/publish_status.dart';
+import '../../../media/presentation/widgets/media_picker_dialog.dart';
 
 class ItemEditorDialog extends StatefulWidget {
   final ContentType contentType;
@@ -107,6 +108,9 @@ class _ItemEditorDialogState extends State<ItemEditorDialog> {
           (widget.contentType == ContentType.courses
               ? 'menu_book_rounded'
               : 'school_rounded');
+      if (_imageController.text.trim().isNotEmpty) {
+        updatedData['image'] = _imageController.text.trim();
+      }
     } else if (widget.contentType == ContentType.gallery) {
       updatedData['category'] = _tagController.text.trim();
       updatedData['description'] = _descriptionController.text.trim();
@@ -141,6 +145,7 @@ class _ItemEditorDialogState extends State<ItemEditorDialog> {
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 640),
         child: Column(
@@ -156,7 +161,7 @@ class _ItemEditorDialogState extends State<ItemEditorDialog> {
               child: Row(
                 children: [
                   Text(
-                    isNew ? 'New $typeName Item' : 'Edit $typeName Item',
+                    isNew ? 'New $typeName' : 'Edit $typeName',
                     style: AppTypography.headingSmall(
                       color: AppColors.surfaceWhite,
                     ),
@@ -179,8 +184,8 @@ class _ItemEditorDialogState extends State<ItemEditorDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Document ID (Editable only for new items)
-                      Text('Document ID (slug)', style: AppTypography.titleMedium()),
+                      // Item Identifier (Editable only for new items)
+                      Text('Item Identifier (slug)', style: AppTypography.titleMedium()),
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _idController,
@@ -190,7 +195,7 @@ class _ItemEditorDialogState extends State<ItemEditorDialog> {
                         ),
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
-                            return 'Please enter a unique document ID';
+                            return 'Please enter a unique item identifier';
                           }
                           return null;
                         },
@@ -245,16 +250,61 @@ class _ItemEditorDialogState extends State<ItemEditorDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Image URL / asset (for Gallery)
-                      if (widget.contentType == ContentType.gallery) ...[
-                        Text('Image Asset Path or Web URL',
-                            style: AppTypography.titleMedium()),
+                      // Image URL / asset (for Gallery, Courses, Programs)
+                      if (widget.contentType == ContentType.gallery ||
+                          widget.contentType == ContentType.courses ||
+                          widget.contentType == ContentType.programs) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                widget.contentType == ContentType.gallery
+                                    ? 'Image URL or Asset Path *'
+                                    : 'Image URL or Asset Path (Optional)',
+                                style: AppTypography.titleMedium(),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              icon: const Icon(Icons.photo_library_outlined, size: 14),
+                              label: const Text('Media Library', style: TextStyle(fontSize: 12)),
+                              onPressed: () async {
+                                final folder = widget.contentType == ContentType.gallery
+                                    ? 'gallery'
+                                    : widget.contentType == ContentType.courses
+                                        ? 'courses'
+                                        : 'programs';
+                                final selected = await MediaPickerDialog.show(
+                                  context,
+                                  initialSelectedUrl: _imageController.text,
+                                  preferredFolder: folder,
+                                );
+                                if (selected != null) {
+                                  setState(() {
+                                    _imageController.text = selected.downloadUrl;
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: _imageController,
-                          decoration: const InputDecoration(
-                            hintText: 'assets/images/classroom_students.webp',
+                          decoration: InputDecoration(
+                            hintText:
+                                'https://firebasestorage.googleapis.com/... or assets/images/...',
+                            suffixIcon: _imageController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 16),
+                                    onPressed: () =>
+                                        setState(() => _imageController.clear()),
+                                  )
+                                : null,
                           ),
+                          onChanged: (_) => setState(() {}),
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -370,7 +420,7 @@ class _ItemEditorDialogState extends State<ItemEditorDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryNavy,
                     ),
-                    child: const Text('Save to Drafts'),
+                    child: const Text('Save Changes'),
                   ),
                 ],
               ),

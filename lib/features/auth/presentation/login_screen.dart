@@ -93,36 +93,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         children: [
                           // Academy Logo Badge
                           Center(
-                            child: Container(
-                              width: 58,
-                              height: 58,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    AppColors.primaryGold,
-                                    AppColors.darkGold,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primaryGold
-                                        .withValues(alpha: 0.35),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
+                            child: Image.asset(
+                              'assets/images/app_logo.webp',
+                              height: 72,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 58,
+                                height: 58,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      AppColors.primaryGold,
+                                      AppColors.darkGold,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
-                                ],
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'NG',
-                                  style: TextStyle(
-                                    color: AppColors.primaryNavy,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 22,
-                                    letterSpacing: -0.5,
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primaryGold
+                                          .withValues(alpha: 0.35),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'NG',
+                                    style: TextStyle(
+                                      color: AppColors.primaryNavy,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 22,
+                                      letterSpacing: -0.5,
+                                    ),
                                   ),
                                 ),
                               ),

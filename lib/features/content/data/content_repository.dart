@@ -38,6 +38,10 @@ abstract class ContentRepository {
   /// 1. Deletes public version from public collection if currently published.
   /// 2. Deletes draft from `cms_drafts/{id}`.
   Future<void> delete(String draftId);
+
+  /// Retrieves the set of document IDs currently present in the public collection.
+  /// Used for verifying actual live published content on the public website.
+  Future<Set<String>> getPublishedDocIds(String contentType) async => const {};
 }
 
 /// Firestore implementation of [ContentRepository] enforcing the dual-collection
@@ -85,6 +89,19 @@ class FirestoreContentRepository implements ContentRepository {
       return null;
     }
     return doc.data();
+  }
+
+  @override
+  Future<Set<String>> getPublishedDocIds(String contentType) async {
+    Query<Map<String, dynamic>> query = _firestore.collection(contentType);
+
+    // For testimonials, public website strictly requires isPublished == true.
+    if (contentType == 'testimonials') {
+      query = query.where('isPublished', isEqualTo: true);
+    }
+
+    final snapshot = await query.get();
+    return snapshot.docs.map((doc) => doc.id).toSet();
   }
 
   @override

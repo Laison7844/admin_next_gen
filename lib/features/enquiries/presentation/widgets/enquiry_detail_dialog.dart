@@ -6,13 +6,45 @@ import '../../../../core/utils/phone_dialer.dart';
 import '../../models/enquiry_item.dart';
 import '../../providers/enquiry_provider.dart';
 
-class EnquiryDetailDialog extends ConsumerWidget {
+class EnquiryDetailDialog extends ConsumerStatefulWidget {
   final EnquiryItem enquiry;
 
   const EnquiryDetailDialog({
     super.key,
     required this.enquiry,
   });
+
+  @override
+  ConsumerState<EnquiryDetailDialog> createState() =>
+      _EnquiryDetailDialogState();
+}
+
+class _EnquiryDetailDialogState extends ConsumerState<EnquiryDetailDialog> {
+  late String _selectedWorkflowStatus;
+  late final TextEditingController _notesController;
+  bool _isNotesDirty = false;
+  bool _isWorkflowDirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedWorkflowStatus = widget.enquiry.workflowStatus;
+    _notesController =
+        TextEditingController(text: widget.enquiry.adminNotes);
+    _notesController.addListener(() {
+      final dirty = _notesController.text.trim() !=
+          widget.enquiry.adminNotes.trim();
+      if (dirty != _isNotesDirty) {
+        setState(() => _isNotesDirty = dirty);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
 
   String _formatDateTime(DateTime? dt) {
     if (dt == null) return 'Not available';
@@ -25,15 +57,15 @@ class EnquiryDetailDialog extends ConsumerWidget {
     return '${dt.day}/${dt.month}/${dt.year} at $timeStr';
   }
 
-  Future<void> _handleCall(BuildContext context) async {
-    final success = await launchPhoneDialer(enquiry.phone);
-    if (context.mounted) {
+  Future<void> _handleCall() async {
+    final success = await launchPhoneDialer(widget.enquiry.phone);
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
-                ? 'Dialing ${enquiry.phone} (number copied to clipboard)'
-                : 'Phone number ${enquiry.phone} copied to clipboard',
+                ? 'Dialing ${widget.enquiry.phone} (number copied to clipboard)'
+                : 'Phone number ${widget.enquiry.phone} copied to clipboard',
           ),
           backgroundColor: AppColors.primaryNavy,
         ),
@@ -41,13 +73,91 @@ class EnquiryDetailDialog extends ConsumerWidget {
     }
   }
 
-  Future<void> _handleDelete(BuildContext context, WidgetRef ref) async {
+  Future<void> _handleSaveWorkflowStatus() async {
+    final controller =
+        ref.read(enquiryOperationControllerProvider.notifier);
+    final success = await controller.updateWorkflowStatus(
+      widget.enquiry.phone,
+      _selectedWorkflowStatus,
+    );
+    if (mounted) {
+      if (success) {
+        setState(() => _isWorkflowDirty = false);
+        final label =
+            EnquiryWorkflowStatus.displayName(_selectedWorkflowStatus);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Workflow status updated to "$label".'),
+            backgroundColor: AppColors.successGreen,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update workflow status. Please retry.'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleSaveNotes() async {
+    final controller =
+        ref.read(enquiryOperationControllerProvider.notifier);
+    final text = _notesController.text.trim();
+    final success =
+        await controller.saveAdminNotes(widget.enquiry.phone, text);
+    if (mounted) {
+      if (success) {
+        setState(() => _isNotesDirty = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Administrative notes saved successfully.'),
+            backgroundColor: AppColors.successGreen,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save notes. Please retry.'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleToggleArchive() async {
+    final newStatus = !widget.enquiry.status;
+    final controller =
+        ref.read(enquiryOperationControllerProvider.notifier);
+    final success =
+        await controller.toggleStatus(widget.enquiry.phone, newStatus);
+    if (mounted) {
+      Navigator.of(context).pop();
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newStatus
+                  ? 'Enquiry restored to Active.'
+                  : 'Enquiry archived.',
+            ),
+            backgroundColor: AppColors.successGreen,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDelete() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Permanently Delete Enquiry?'),
         content: Text(
-          'Are you sure you want to delete the enquiry from "${enquiry.name.isEmpty ? enquiry.phone : enquiry.name}"?\n\n'
+          'Are you sure you want to delete the enquiry from "${widget.enquiry.name.isEmpty ? widget.enquiry.phone : widget.enquiry.name}"?\n\n'
           'This action cannot be undone.',
         ),
         actions: [
@@ -67,11 +177,12 @@ class EnquiryDetailDialog extends ConsumerWidget {
       ),
     );
 
-    if (confirmed == true && context.mounted) {
+    if (confirmed == true && mounted) {
       final controller =
           ref.read(enquiryOperationControllerProvider.notifier);
-      final success = await controller.deleteEnquiry(enquiry.phone);
-      if (context.mounted) {
+      final success =
+          await controller.deleteEnquiry(widget.enquiry.phone);
+      if (mounted) {
         Navigator.of(context).pop(); // Close detail dialog
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -85,36 +196,57 @@ class EnquiryDetailDialog extends ConsumerWidget {
     }
   }
 
-  Future<void> _handleToggleStatus(BuildContext context, WidgetRef ref) async {
-    final newStatus = !enquiry.status;
-    final controller =
-        ref.read(enquiryOperationControllerProvider.notifier);
-    final success = await controller.toggleStatus(enquiry.phone, newStatus);
-    if (context.mounted) {
-      Navigator.of(context).pop();
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              newStatus
-                  ? 'Enquiry marked as Active / Received.'
-                  : 'Enquiry archived.',
-            ),
-            backgroundColor: AppColors.successGreen,
-          ),
-        );
-      }
+  Color _workflowBg(String status) {
+    switch (EnquiryWorkflowStatus.normalize(status)) {
+      case EnquiryWorkflowStatus.contacted:
+        return const Color(0xFFFEF3C7);
+      case EnquiryWorkflowStatus.enrolled:
+        return const Color(0xFFDCFCE7);
+      case EnquiryWorkflowStatus.closed:
+        return const Color(0xFFF1F5F9);
+      case EnquiryWorkflowStatus.newStatus:
+      default:
+        return const Color(0xFFE0F2FE);
+    }
+  }
+
+  Color _workflowText(String status) {
+    switch (EnquiryWorkflowStatus.normalize(status)) {
+      case EnquiryWorkflowStatus.contacted:
+        return const Color(0xFFB45309);
+      case EnquiryWorkflowStatus.enrolled:
+        return const Color(0xFF15803D);
+      case EnquiryWorkflowStatus.closed:
+        return const Color(0xFF475569);
+      case EnquiryWorkflowStatus.newStatus:
+      default:
+        return const Color(0xFF0369A1);
+    }
+  }
+
+  IconData _workflowIcon(String status) {
+    switch (EnquiryWorkflowStatus.normalize(status)) {
+      case EnquiryWorkflowStatus.contacted:
+        return Icons.phone_in_talk_outlined;
+      case EnquiryWorkflowStatus.enrolled:
+        return Icons.how_to_reg_outlined;
+      case EnquiryWorkflowStatus.closed:
+        return Icons.check_circle_outline;
+      case EnquiryWorkflowStatus.newStatus:
+      default:
+        return Icons.fiber_new_rounded;
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final opState = ref.watch(enquiryOperationControllerProvider);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 580),
+        constraints: const BoxConstraints(maxWidth: 640),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -132,8 +264,8 @@ class EnquiryDetailDialog extends ConsumerWidget {
                     radius: 20,
                     backgroundColor: AppColors.mediumNavy,
                     child: Text(
-                      enquiry.name.isNotEmpty
-                          ? enquiry.name[0].toUpperCase()
+                      widget.enquiry.name.isNotEmpty
+                          ? widget.enquiry.name[0].toUpperCase()
                           : '#',
                       style: const TextStyle(
                         color: AppColors.primaryGold,
@@ -148,8 +280,8 @@ class EnquiryDetailDialog extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          enquiry.name.isNotEmpty
-                              ? enquiry.name
+                          widget.enquiry.name.isNotEmpty
+                              ? widget.enquiry.name
                               : 'Prospective Student',
                           style: AppTypography.headingSmall(
                             color: AppColors.surfaceWhite,
@@ -157,7 +289,7 @@ class EnquiryDetailDialog extends ConsumerWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Admissions Enquiry Details',
+                          'Admissions Enquiry & Workflow Details',
                           style: AppTypography.bodySmall(
                             color: const Color(0xFFD0D7E5),
                           ),
@@ -180,19 +312,57 @@ class EnquiryDetailDialog extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Status & Program Banner
-                    Row(
+                    // Status Banners Row
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
+                        // Workflow Badge
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: enquiry.status
+                            color: _workflowBg(widget.enquiry.workflowStatus),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _workflowText(widget.enquiry.workflowStatus)
+                                  .withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _workflowIcon(widget.enquiry.workflowStatus),
+                                size: 14,
+                                color: _workflowText(
+                                    widget.enquiry.workflowStatus),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'WORKFLOW: ${EnquiryWorkflowStatus.displayName(widget.enquiry.workflowStatus).toUpperCase()}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: _workflowText(
+                                      widget.enquiry.workflowStatus),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Archive Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: widget.enquiry.status
                                 ? const Color(0xFFECFDF5)
                                 : AppColors.softGrayBg,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: enquiry.status
+                              color: widget.enquiry.status
                                   ? AppColors.successGreen
                                   : AppColors.borderLight,
                             ),
@@ -201,21 +371,21 @@ class EnquiryDetailDialog extends ConsumerWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                enquiry.status
+                                widget.enquiry.status
                                     ? Icons.check_circle_outline
                                     : Icons.archive_outlined,
                                 size: 14,
-                                color: enquiry.status
+                                color: widget.enquiry.status
                                     ? AppColors.successGreen
                                     : AppColors.textSecondary,
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                enquiry.status ? 'ACTIVE / RECEIVED' : 'ARCHIVED',
+                                widget.enquiry.status ? 'ACTIVE' : 'ARCHIVED',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: enquiry.status
+                                  color: widget.enquiry.status
                                       ? AppColors.successGreen
                                       : AppColors.textSecondary,
                                 ),
@@ -223,8 +393,9 @@ class EnquiryDetailDialog extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        if (enquiry.program.isNotEmpty) ...[
-                          const SizedBox(width: 10),
+
+                        // Program Badge
+                        if (widget.enquiry.program.isNotEmpty)
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
@@ -232,7 +403,8 @@ class EnquiryDetailDialog extends ConsumerWidget {
                               color: AppColors.softGoldBg,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: AppColors.borderGold.withValues(alpha: 0.5),
+                                color: AppColors.borderGold
+                                    .withValues(alpha: 0.5),
                               ),
                             ),
                             child: Row(
@@ -245,7 +417,7 @@ class EnquiryDetailDialog extends ConsumerWidget {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  enquiry.program,
+                                  widget.enquiry.program,
                                   style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -255,7 +427,6 @@ class EnquiryDetailDialog extends ConsumerWidget {
                               ],
                             ),
                           ),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -278,7 +449,7 @@ class EnquiryDetailDialog extends ConsumerWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              enquiry.phone,
+                              widget.enquiry.phone,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -296,14 +467,156 @@ class EnquiryDetailDialog extends ConsumerWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 10),
                             ),
-                            onPressed: () => _handleCall(context),
+                            onPressed: _handleCall,
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 20),
 
-                    // Message Block
+                    // Section 1: Workflow Status Selector
+                    Text(
+                      'Admissions Workflow Status',
+                      style: AppTypography.headingSmall().copyWith(fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _selectedWorkflowStatus,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                border: OutlineInputBorder(),
+                                labelText: 'Workflow Stage',
+                              ),
+                              items: EnquiryWorkflowStatus.all
+                                  .map((status) => DropdownMenuItem(
+                                        value: status,
+                                        child: Text(
+                                          EnquiryWorkflowStatus.displayName(
+                                              status),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ))
+                                  .toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() {
+                                    _selectedWorkflowStatus = val;
+                                    _isWorkflowDirty =
+                                        _selectedWorkflowStatus !=
+                                            widget.enquiry.workflowStatus;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.save_outlined, size: 16),
+                            label: const Text('Save Status'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryNavy,
+                              foregroundColor: AppColors.surfaceWhite,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                            ),
+                            onPressed: (_isWorkflowDirty && !opState.isLoading)
+                                ? _handleSaveWorkflowStatus
+                                : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Section 2: Administrative Private Notes
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Administrative Notes (Private)',
+                            style: AppTypography.headingSmall()
+                                .copyWith(fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (_isNotesDirty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.softGoldBg,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: AppColors.primaryGold),
+                            ),
+                            child: const Text(
+                              'Unsaved Changes',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.darkGold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Internal notes visible only to academy administrators; never displayed publicly.',
+                      style: AppTypography.bodySmall(
+                          color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _notesController,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Enter administrative follow-up notes, call remarks, batch preferences...',
+                        filled: true,
+                        fillColor: AppColors.backgroundLight,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide:
+                              const BorderSide(color: AppColors.borderLight),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.bookmark_added_outlined,
+                            size: 16),
+                        label: const Text('Save Notes'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryNavy,
+                          foregroundColor: AppColors.surfaceWhite,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                        ),
+                        onPressed: (_isNotesDirty && !opState.isLoading)
+                            ? _handleSaveNotes
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Section 3: Original Message Block
                     Text(
                       'Enquiry Message / Remarks',
                       style: AppTypography.headingSmall().copyWith(fontSize: 14),
@@ -318,11 +631,11 @@ class EnquiryDetailDialog extends ConsumerWidget {
                         border: Border.all(color: AppColors.borderLight),
                       ),
                       child: Text(
-                        enquiry.message.isNotEmpty
-                            ? enquiry.message
+                        widget.enquiry.message.isNotEmpty
+                            ? widget.enquiry.message
                             : 'No additional message was included in this enquiry.',
                         style: AppTypography.bodyMedium(
-                          color: enquiry.message.isNotEmpty
+                          color: widget.enquiry.message.isNotEmpty
                               ? AppColors.textPrimary
                               : AppColors.textSecondary,
                         ),
@@ -330,7 +643,7 @@ class EnquiryDetailDialog extends ConsumerWidget {
                     ),
                     const SizedBox(height: 20),
 
-                    // Timestamps & Meta
+                    // Section 4: Timestamps
                     Row(
                       children: [
                         Expanded(
@@ -344,7 +657,7 @@ class EnquiryDetailDialog extends ConsumerWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                _formatDateTime(enquiry.createdAt),
+                                _formatDateTime(widget.enquiry.createdAt),
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -353,7 +666,7 @@ class EnquiryDetailDialog extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        if (enquiry.updatedAt != null)
+                        if (widget.enquiry.updatedAt != null)
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,7 +678,7 @@ class EnquiryDetailDialog extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _formatDateTime(enquiry.updatedAt),
+                                  _formatDateTime(widget.enquiry.updatedAt),
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -383,14 +696,18 @@ class EnquiryDetailDialog extends ConsumerWidget {
 
             // Dialog Footer Actions
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: const BoxDecoration(
                 color: Color(0xFFF8FAFC),
                 border: Border(top: BorderSide(color: AppColors.borderLight)),
                 borderRadius:
                     BorderRadius.vertical(bottom: Radius.circular(16)),
               ),
-              child: Row(
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   OutlinedButton.icon(
                     icon: const Icon(Icons.delete_outline, size: 16),
@@ -399,33 +716,33 @@ class EnquiryDetailDialog extends ConsumerWidget {
                       foregroundColor: AppColors.errorRed,
                       side: const BorderSide(color: AppColors.errorRed),
                     ),
-                    onPressed: opState.isLoading
-                        ? null
-                        : () => _handleDelete(context, ref),
+                    onPressed: opState.isLoading ? null : _handleDelete,
                   ),
-                  const Spacer(),
-                  TextButton.icon(
-                    icon: Icon(
-                      enquiry.status
-                          ? Icons.archive_outlined
-                          : Icons.unarchive_outlined,
-                      size: 16,
-                    ),
-                    label: Text(
-                      enquiry.status ? 'Archive' : 'Restore Active',
-                    ),
-                    onPressed: opState.isLoading
-                        ? null
-                        : () => _handleToggleStatus(context, ref),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryNavy,
-                      foregroundColor: AppColors.surfaceWhite,
-                    ),
-                    child: const Text('Close'),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      TextButton.icon(
+                        icon: Icon(
+                          widget.enquiry.status
+                              ? Icons.archive_outlined
+                              : Icons.unarchive_outlined,
+                          size: 16,
+                        ),
+                        label: Text(
+                          widget.enquiry.status ? 'Archive' : 'Restore Active',
+                        ),
+                        onPressed: opState.isLoading ? null : _handleToggleArchive,
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryNavy,
+                          foregroundColor: AppColors.surfaceWhite,
+                        ),
+                        child: const Text('Close'),
+                      ),
+                    ],
                   ),
                 ],
               ),

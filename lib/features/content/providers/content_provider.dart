@@ -30,6 +30,27 @@ final contentItemProvider =
   return service.getDraft(id);
 });
 
+/// One-time fetch provider returning the set of actual live document IDs
+/// currently present in public Firestore collections.
+final publishedDocIdsProvider =
+    FutureProvider<Map<String, Set<String>>>((ref) async {
+  final service = ref.watch(contentServiceProvider);
+  const collections = [
+    'courses',
+    'programs',
+    'testimonials',
+    'gallery',
+    'faqs',
+    'site_sections',
+  ];
+
+  final results = await Future.wait(
+    collections.map((col) => service.getPublishedDocIds(col)),
+  );
+
+  return Map.fromIterables(collections, results);
+});
+
 /// State of content mutation operations (publish, unpublish, save, delete).
 class ContentOperationState {
   final bool isLoading;

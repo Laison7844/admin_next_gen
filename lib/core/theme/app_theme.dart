@@ -5,7 +5,8 @@ import 'app_typography.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
-    final baseTextTheme = AppTypography.useSystemFont
+    final useFallback = AppTypography.useSystemFont || !AppTypography.hasBindings;
+    final baseTextTheme = useFallback
         ? ThemeData.light().textTheme
         : GoogleFonts.interTextTheme();
 
@@ -28,7 +29,7 @@ class AppTheme {
         outline: AppColors.borderLight,
         outlineVariant: AppColors.borderMedium,
       ),
-      textTheme: AppTypography.useSystemFont
+      textTheme: useFallback
           ? baseTextTheme
           : baseTextTheme.copyWith(
               displaySmall: GoogleFonts.poppins(
@@ -75,13 +76,13 @@ class AppTheme {
         filled: true,
         fillColor: AppColors.surfaceWhite,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        hintStyle: AppTypography.useSystemFont
+        hintStyle: useFallback
             ? const TextStyle(fontSize: 14, color: AppColors.textMuted)
             : GoogleFonts.inter(
                 fontSize: 14,
                 color: AppColors.textMuted,
               ),
-        labelStyle: AppTypography.useSystemFont
+        labelStyle: useFallback
             ? const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -122,7 +123,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          textStyle: AppTypography.useSystemFont
+          textStyle: useFallback
               ? const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -143,7 +144,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          textStyle: AppTypography.useSystemFont
+          textStyle: useFallback
               ? const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,

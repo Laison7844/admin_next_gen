@@ -7,6 +7,19 @@ class AppTypography {
   /// to avoid external HTTP font fetch failures in headless test runners.
   static bool useSystemFont = false;
 
+  /// Helper to check whether Flutter bindings are initialized before invoking
+  /// GoogleFonts which registers platform message listeners with SchedulerBinding.
+  static bool get hasBindings {
+    try {
+      WidgetsBinding.instance;
+      return true;
+    } on FlutterError {
+      return false;
+    } on TypeError {
+      return false;
+    }
+  }
+
   static TextStyle _font({
     required TextStyle Function() googleFont,
     required double fontSize,
@@ -15,7 +28,7 @@ class AppTypography {
     double? height,
     double? letterSpacing,
   }) {
-    if (useSystemFont) {
+    if (useSystemFont || !hasBindings) {
       return TextStyle(
         fontFamily: 'sans-serif',
         fontSize: fontSize,

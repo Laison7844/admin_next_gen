@@ -50,12 +50,16 @@ class CmsContentItem {
     };
   }
 
-  /// Creates public payload for target public collection (e.g. `courses/{id}`).
+  /// Creates public payload for target public collection (e.g. `courses/{id}`, `testimonials/{id}`).
   Map<String, dynamic> toPublicPayload() {
+    final publicData = Map<String, dynamic>.from(data);
+    publicData['isPublished'] = true;
+
     return {
       'id': id,
       'title': title,
-      'data': data,
+      'isPublished': true,
+      'data': publicData,
       'publishedAt': Timestamp.fromDate(publishedAt ?? DateTime.now()),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };

@@ -9,11 +9,16 @@ import 'package:admin_next_gen/features/content/models/cms_content_item.dart';
 import 'package:admin_next_gen/features/content/models/content_type.dart';
 import 'package:admin_next_gen/features/content/models/publish_status.dart';
 import 'package:admin_next_gen/features/content/providers/content_provider.dart';
-import 'package:admin_next_gen/features/dashboard/presentation/placeholder_screen.dart';
 import 'package:admin_next_gen/features/enquiries/data/enquiry_repository.dart';
 import 'package:admin_next_gen/features/enquiries/models/enquiry_item.dart';
+import 'package:admin_next_gen/features/enquiries/models/enquiry_page.dart';
 import 'package:admin_next_gen/features/enquiries/presentation/enquiry_list_screen.dart';
 import 'package:admin_next_gen/features/enquiries/providers/enquiry_provider.dart';
+import 'package:admin_next_gen/features/media/data/media_repository.dart';
+import 'package:admin_next_gen/features/media/models/media_item.dart';
+import 'package:admin_next_gen/features/media/presentation/media_library_screen.dart';
+import 'package:admin_next_gen/features/media/services/media_file_picker.dart';
+import 'package:admin_next_gen/features/testimonials/presentation/testimonials_screen.dart';
 import 'package:admin_next_gen/features/home_cms/models/home_section_definition.dart';
 import 'package:admin_next_gen/features/home_cms/presentation/home_cms_screen.dart';
 import 'package:admin_next_gen/features/home_cms/presentation/standalone_section_screen.dart';
@@ -127,11 +132,29 @@ class MemoryContentRepository implements ContentRepository {
     }
     drafts.remove(draftId);
   }
+
+  @override
+  Future<Set<String>> getPublishedDocIds(String contentType) async {
+    final prefix = '${contentType}_';
+    return published.keys
+        .where((k) => k.startsWith(prefix))
+        .map((k) => k.substring(prefix.length))
+        .toSet();
+  }
 }
 
 class FakeEnquiryRepo implements EnquiryRepository {
   @override
   Future<List<EnquiryItem>> getEnquiries({int limit = 100}) async => [];
+
+  @override
+  Future<EnquiryPage> getEnquiriesPaginated({
+    int pageSize = 25,
+    dynamic startAfterCursor,
+    int pageIndex = 1,
+    EnquiryFilter? filter,
+  }) async =>
+      EnquiryPage.empty();
 
   @override
   Future<EnquiryItem?> getEnquiryByPhone(String phone) async => null;
@@ -140,10 +163,40 @@ class FakeEnquiryRepo implements EnquiryRepository {
   Future<void> updateEnquiryStatus(String phone, bool status) async {}
 
   @override
+  Future<void> updateWorkflow({
+    required String phone,
+    String? workflowStatus,
+    String? adminNotes,
+  }) async {}
+
+  @override
   Future<void> deleteEnquiry(String phone) async {}
 }
 
+class FakeMediaRepo implements MediaRepository {
+  @override
+  Future<List<MediaItem>> getMediaItems({String? folder, bool forceRefresh = false}) async => [];
+
+  @override
+  Future<MediaItem> uploadMedia({
+    required SelectedMediaFile file,
+    required String folder,
+    required String adminUid,
+    void Function(double progress)? onProgress,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteMedia(MediaItem item) async {}
+
+  @override
+  Future<MediaItem?> getMediaByPath(String fullPath) async => null;
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUpAll(() {
     AppTypography.useSystemFont = true;
   });
@@ -214,13 +267,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('About Us'), findsOneWidget);
-      expect(find.text('Singleton Document'), findsOneWidget);
-      expect(
-        find.textContaining('site_sections/about_us'),
-        findsOneWidget,
-      );
+      expect(find.text('Website Section'), findsOneWidget);
       expect(find.byType(SingletonSectionEditor), findsOneWidget);
-      expect(find.text('Save Draft'), findsAtLeastNWidgets(1));
+      expect(find.text('Save Changes'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('FAQs renders CollectionSectionView with target info and search',
@@ -246,11 +295,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('FAQs'), findsOneWidget);
-      expect(find.text('Multi-Item Collection'), findsOneWidget);
-      expect(
-        find.textContaining('faqs/*'),
-        findsOneWidget,
-      );
+      expect(find.text('Multiple Items'), findsOneWidget);
       expect(find.byType(CollectionSectionView), findsOneWidget);
       expect(find.text('Add New FAQs Item'), findsOneWidget);
       expect(find.text('Load Default Website Data'), findsOneWidget);
@@ -359,10 +404,6 @@ void main() {
 
       expect(find.text('Contact & Footer'), findsOneWidget);
       expect(find.byType(SingletonSectionEditor), findsOneWidget);
-      expect(
-        find.textContaining('site_sections/contact_footer'),
-        findsOneWidget,
-      );
     });
   });
 
@@ -411,6 +452,7 @@ void main() {
             authServiceProvider.overrideWithValue(authService),
             contentRepositoryProvider.overrideWithValue(repo),
             enquiryRepositoryProvider.overrideWithValue(FakeEnquiryRepo()),
+            mediaRepositoryProvider.overrideWithValue(FakeMediaRepo()),
           ],
           child: Consumer(
             builder: (context, ref, _) {
@@ -469,11 +511,12 @@ void main() {
       expect(find.byType(SingletonSectionEditor), findsOneWidget);
       expect(find.text('Contact & Footer'), findsWidgets);
 
-      // 7. Home CMS route remains intact with all 13 sections
+      // 7. Home CMS route remains intact with focused homepage sections
       router.go(RoutePaths.home);
       await tester.pumpAndSettle();
       expect(find.byType(HomeCmsScreen), findsOneWidget);
-      expect(find.text('13 Home Page Content Modules'), findsOneWidget);
+      expect(find.text('Homepage Content'), findsOneWidget);
+      expect(find.text('Homepage Sections'), findsOneWidget);
 
       // 8. Enquiries route
       router.go(RoutePaths.enquiries);
@@ -481,14 +524,17 @@ void main() {
       expect(find.byType(EnquiryListScreen), findsOneWidget);
       expect(find.text('Admissions Enquiries'), findsWidgets);
 
-      // 9. Placeholders preserved for non-implemented routes
+      // 9. Media Library route
       router.go(RoutePaths.mediaLibrary);
       await tester.pumpAndSettle();
-      expect(find.byType(PlaceholderScreen), findsOneWidget);
+      expect(find.byType(MediaLibraryScreen), findsOneWidget);
+      expect(find.text('Media Library'), findsWidgets);
 
+      // 10. Testimonials route fully integrated
       router.go(RoutePaths.testimonials);
       await tester.pumpAndSettle();
-      expect(find.byType(PlaceholderScreen), findsOneWidget);
+      expect(find.byType(TestimonialsScreen), findsOneWidget);
+      expect(find.text('Testimonials'), findsWidgets);
     });
   });
 
@@ -526,7 +572,7 @@ void main() {
 
       // Check that 6 FAQs were seeded into drafts
       expect(repo.drafts.length, 6);
-      expect(find.text('DRAFT ONLY'), findsNWidgets(6));
+      expect(find.text('Unpublished'), findsNWidgets(6));
 
       // Publish the first FAQ
       final publishButton = find.widgetWithIcon(IconButton, Icons.cloud_upload_outlined);
@@ -535,14 +581,14 @@ void main() {
       await tester.pumpAndSettle();
 
       // Confirm publish dialog
-      expect(find.text('Publish Item to Live Website?'), findsOneWidget);
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Publish Live'));
+      expect(find.text('Publish Item to Website?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Publish to Website'));
       await tester.pumpAndSettle();
 
       // Check published in repo
       expect(repo.published.length, 1);
-      expect(find.text('LIVE'), findsOneWidget);
-      expect(find.text('DRAFT ONLY'), findsNWidgets(5));
+      expect(find.text('Published'), findsOneWidget);
+      expect(find.text('Unpublished'), findsNWidgets(5));
     });
   });
 }

@@ -74,6 +74,15 @@ class MockContentRepository implements ContentRepository {
   }
 
   @override
+  Future<Set<String>> getPublishedDocIds(String contentType) async {
+    final prefix = '${contentType}_';
+    return published.keys
+        .where((k) => k.startsWith(prefix))
+        .map((k) => k.substring(prefix.length))
+        .toSet();
+  }
+
+  @override
   Future<Map<String, dynamic>?> getPublishedItem(
     String contentType,
     String id,
@@ -90,6 +99,8 @@ class FailingPublishRepository extends MockContentRepository {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUpAll(() {
     AppTypography.useSystemFont = true;
   });
@@ -477,9 +488,9 @@ void main() {
         ),
       );
 
-      expect(find.text('DRAFT ONLY'), findsOneWidget);
-      expect(find.text('LIVE'), findsOneWidget);
-      expect(find.text('UNPUBLISHED CHANGES'), findsOneWidget);
+      expect(find.text('Unpublished'), findsOneWidget);
+      expect(find.text('Published'), findsOneWidget);
+      expect(find.text('Changes Not Saved'), findsOneWidget);
     });
 
     testWidgets('SectionPreviewDialog renders visual preview for all 13 sections without errors',
@@ -543,14 +554,14 @@ void main() {
       await tester.pumpAndSettle();
 
       // Should show section list title
-      expect(find.text('Website Sections'), findsOneWidget);
-      expect(find.text('13 Home Page Content Modules'), findsOneWidget);
+      expect(find.text('Homepage Content'), findsOneWidget);
+      expect(find.text('Homepage Sections'), findsOneWidget);
 
       // Default active is Hero Section
       expect(find.text('Hero Section'), findsAtLeastNWidgets(1));
-      expect(find.text('Singleton Document'), findsOneWidget);
-      expect(find.text('Save Draft'), findsAtLeastNWidgets(1));
-      expect(find.text('Publish Live'), findsAtLeastNWidgets(1));
+      expect(find.text('Website Section'), findsOneWidget);
+      expect(find.text('Save Changes'), findsAtLeastNWidgets(1));
+      expect(find.text('Publish to Website'), findsAtLeastNWidgets(1));
     });
   });
 }

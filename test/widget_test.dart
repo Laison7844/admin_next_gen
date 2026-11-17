@@ -35,6 +35,8 @@ class FakeAuthService implements AuthService {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUpAll(() {
     AppTypography.useSystemFont = true;
   });
@@ -46,20 +48,26 @@ void main() {
       expect(theme.brightness, Brightness.light);
     });
 
-    test('All 11 required navigation items are configured with unique routes', () {
-      expect(NavItem.items.length, 11);
+    test('All 17 required navigation items are configured with unique routes', () {
+      expect(NavItem.items.length, 17);
 
       final routes = NavItem.items.map((e) => e.route).toSet();
-      expect(routes.length, 11);
+      expect(routes.length, 17);
 
       expect(routes.contains(RoutePaths.dashboard), isTrue);
       expect(routes.contains(RoutePaths.home), isTrue);
+      expect(routes.contains(RoutePaths.whyNextGen), isTrue);
+      expect(routes.contains(RoutePaths.learningModes), isTrue);
+      expect(routes.contains(RoutePaths.pledge), isTrue);
+      expect(routes.contains(RoutePaths.assessments), isTrue);
+      expect(routes.contains(RoutePaths.bannerCta), isTrue);
       expect(routes.contains(RoutePaths.about), isTrue);
       expect(routes.contains(RoutePaths.courses), isTrue);
       expect(routes.contains(RoutePaths.programs), isTrue);
       expect(routes.contains(RoutePaths.gallery), isTrue);
       expect(routes.contains(RoutePaths.testimonials), isTrue);
       expect(routes.contains(RoutePaths.faqs), isTrue);
+      expect(routes.contains(RoutePaths.contactFooter), isTrue);
       expect(routes.contains(RoutePaths.enquiries), isTrue);
       expect(routes.contains(RoutePaths.mediaLibrary), isTrue);
       expect(routes.contains(RoutePaths.settings), isTrue);

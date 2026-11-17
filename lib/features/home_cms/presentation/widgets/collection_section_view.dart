@@ -178,9 +178,9 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Publish Item to Live Website?'),
+        title: const Text('Publish Item to Website?'),
         content: Text(
-          'This will publish "${item.title}" to the live website collection "${widget.section.contentType.publicCollection}".',
+          'This will publish "${item.title}" to the live website.',
         ),
         actions: [
           TextButton(
@@ -193,7 +193,7 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
               foregroundColor: AppColors.primaryNavy,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Publish Live'),
+            child: const Text('Publish to Website'),
           ),
         ],
       ),
@@ -211,7 +211,7 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
     if (mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('"${item.title}" is now published and live.'),
+          content: Text('"${item.title}" is now published to the website!'),
           backgroundColor: AppColors.successGreen,
         ),
       );
@@ -222,9 +222,9 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Unpublish Item?'),
+        title: const Text('Remove Item from Website?'),
         content: Text(
-          'This will remove "${item.title}" from the public website while keeping the CMS draft intact.',
+          'This will remove "${item.title}" from the public website while keeping your unpublished changes intact.',
         ),
         actions: [
           TextButton(
@@ -237,7 +237,7 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
               foregroundColor: AppColors.surfaceWhite,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Unpublish'),
+            child: const Text('Remove from Website'),
           ),
         ],
       ),
@@ -254,7 +254,7 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
     if (mounted && success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('"${item.title}" unpublished from live website.'),
+          content: Text('"${item.title}" removed from the website.'),
           backgroundColor: AppColors.mediumNavy,
         ),
       );
@@ -265,9 +265,9 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Permanently Delete Item?'),
+        title: const Text('Delete Content?'),
         content: Text(
-          'Are you sure you want to delete "${item.title}"? This permanently removes the draft and any published version.',
+          'Are you sure you want to delete "${item.title}"? This permanently removes the content from the website and CMS.',
         ),
         actions: [
           TextButton(
@@ -280,7 +280,7 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
               foregroundColor: AppColors.surfaceWhite,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete Permanently'),
+            child: const Text('Delete Content'),
           ),
         ],
       ),
@@ -324,57 +324,74 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Action and Search Bar
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceWhite,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.borderLight),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x080B1B3D),
-                blurRadius: 10,
-                offset: Offset(0, 4),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 640;
+
+            final searchField = TextField(
+              decoration: InputDecoration(
+                hintText:
+                    'Search ${widget.section.title.toLowerCase()} by title, category, or keywords...',
+                prefixIcon:
+                    const Icon(Icons.search, color: AppColors.textSecondary),
+                filled: true,
+                fillColor: AppColors.backgroundLight,
+                isDense: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide:
+                      const BorderSide(color: AppColors.borderLight),
+                ),
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText:
-                        'Search ${widget.section.title.toLowerCase()} by title, category, or keywords...',
-                    prefixIcon:
-                        const Icon(Icons.search, color: AppColors.textSecondary),
-                    filled: true,
-                    fillColor: AppColors.backgroundLight,
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          const BorderSide(color: AppColors.borderLight),
-                    ),
+              onChanged: (val) {
+                setState(() => _searchQuery = val.trim().toLowerCase());
+              },
+            );
+
+            final addButton = ElevatedButton.icon(
+              icon: const Icon(Icons.add, size: 18),
+              label: Text('Add New ${widget.section.title} Item'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryNavy,
+                foregroundColor: AppColors.surfaceWhite,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              ),
+              onPressed: opState.isLoading ? null : _openCreateDialog,
+            );
+
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceWhite,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderLight),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x080B1B3D),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
                   ),
-                  onChanged: (val) {
-                    setState(() => _searchQuery = val.trim().toLowerCase());
-                  },
-                ),
+                ],
               ),
-              const SizedBox(width: 14),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add, size: 18),
-                label: Text('Add New ${widget.section.title} Item'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryNavy,
-                  foregroundColor: AppColors.surfaceWhite,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                ),
-                onPressed: opState.isLoading ? null : _openCreateDialog,
-              ),
-            ],
-          ),
+              child: isMobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        searchField,
+                        const SizedBox(height: 12),
+                        addButton,
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(child: searchField),
+                        const SizedBox(width: 14),
+                        addButton,
+                      ],
+                    ),
+            );
+          },
         ),
         const SizedBox(height: 20),
 
@@ -454,7 +471,7 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
 
   Widget _buildEmptyState() {
     return Container(
-      padding: const EdgeInsets.all(48),
+      padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
         color: AppColors.surfaceWhite,
         borderRadius: BorderRadius.circular(12),
@@ -466,17 +483,21 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
           Icon(widget.section.icon, size: 54, color: AppColors.textSecondary),
           const SizedBox(height: 16),
           Text(
-            'No ${widget.section.title} items found in drafts',
+            'No ${widget.section.title.toLowerCase()} added yet',
             style: AppTypography.headingSmall(),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
-            'You can load the initial website items or create a new one from scratch.',
+            'Add your first ${widget.section.title.toLowerCase()} or load the suggested starting content.',
             style: AppTypography.bodyMedium(color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.center,
             children: [
               OutlinedButton.icon(
                 icon: const Icon(Icons.download_outlined, size: 18),
@@ -489,7 +510,6 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
                 ),
                 onPressed: _seedDefaultItems,
               ),
-              const SizedBox(width: 14),
               ElevatedButton.icon(
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Create New Item'),
@@ -514,89 +534,77 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
     final tag = (item.data['tag'] ?? item.data['category'])?.toString();
     final subtitle = item.data['subtitle']?.toString();
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceWhite,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderLight),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x060B1B3D),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Order chip
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: AppColors.backgroundLight,
-            child: Text(
-              '$order',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryNavy,
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 640;
+
+        final orderAvatar = CircleAvatar(
+          radius: 14,
+          backgroundColor: AppColors.backgroundLight,
+          child: Text(
+            '$order',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primaryNavy,
             ),
           ),
-          const SizedBox(width: 14),
+        );
 
-          // Main details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        final detailsColumn = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        item.title,
-                        style:
-                            AppTypography.headingSmall().copyWith(fontSize: 16),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (tag != null && tag.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryGold.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          tag,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryNavy,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                if (subtitle != null && subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: AppTypography.bodySmall(
-                        color: AppColors.textSecondary),
+                Flexible(
+                  child: Text(
+                    item.title,
+                    style:
+                        AppTypography.headingSmall().copyWith(fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    PublishStatusBadge(
-                      status: item.publishStatus,
-                      hasUnpublishedChanges: item.hasUnpublishedChanges,
+                ),
+                const SizedBox(width: 8),
+                if (tag != null && tag.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGold.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    const SizedBox(width: 12),
+                    child: Text(
+                      tag,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryNavy,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (subtitle != null && subtitle.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: AppTypography.bodySmall(
+                    color: AppColors.textSecondary),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 12,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                PublishStatusBadge(
+                  status: item.publishStatus,
+                  hasUnpublishedChanges: item.hasUnpublishedChanges,
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Icon(
                       isVisible
                           ? Icons.visibility_outlined
@@ -620,45 +628,98 @@ class _CollectionSectionViewState extends ConsumerState<CollectionSectionView> {
                 ),
               ],
             ),
-          ),
+          ],
+        );
 
-          // Action buttons
-          IconButton(
-            tooltip: 'Preview',
-            icon: const Icon(Icons.visibility_outlined, size: 20),
-            color: AppColors.primaryNavy,
-            onPressed: () => _handlePreview(item),
-          ),
-          IconButton(
-            tooltip: 'Edit Draft',
-            icon: const Icon(Icons.edit_outlined, size: 20),
-            color: AppColors.primaryNavy,
-            onPressed: () => _openEditDialog(item),
-          ),
-          IconButton(
-            tooltip: 'Publish Live',
-            icon: const Icon(Icons.cloud_upload_outlined, size: 20),
-            color: AppColors.primaryGold,
-            onPressed:
-                opState.isLoading ? null : () => _handlePublish(item),
-          ),
-          if (item.publishStatus == PublishStatus.published)
+        final actionButtons = Wrap(
+          spacing: 2,
+          runSpacing: 2,
+          alignment: WrapAlignment.end,
+          children: [
             IconButton(
-              tooltip: 'Unpublish',
-              icon: const Icon(Icons.cloud_off_outlined, size: 20),
+              tooltip: 'Preview',
+              icon: const Icon(Icons.visibility_outlined, size: 20),
+              color: AppColors.primaryNavy,
+              onPressed: () => _handlePreview(item),
+            ),
+            IconButton(
+              tooltip: 'Edit Content',
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              color: AppColors.primaryNavy,
+              onPressed: () => _openEditDialog(item),
+            ),
+            IconButton(
+              tooltip: 'Publish to Website',
+              icon: const Icon(Icons.cloud_upload_outlined, size: 20),
+              color: AppColors.primaryGold,
+              onPressed:
+                  opState.isLoading ? null : () => _handlePublish(item),
+            ),
+            if (item.publishStatus == PublishStatus.published)
+              IconButton(
+                tooltip: 'Remove from Website',
+                icon: const Icon(Icons.cloud_off_outlined, size: 20),
+                color: AppColors.errorRed,
+                onPressed:
+                    opState.isLoading ? null : () => _handleUnpublish(item),
+              ),
+            IconButton(
+              tooltip: 'Delete Content',
+              icon: const Icon(Icons.delete_outline, size: 20),
               color: AppColors.errorRed,
               onPressed:
-                  opState.isLoading ? null : () => _handleUnpublish(item),
+                  opState.isLoading ? null : () => _handleDelete(item),
             ),
-          IconButton(
-            tooltip: 'Delete Permanently',
-            icon: const Icon(Icons.delete_outline, size: 20),
-            color: AppColors.errorRed,
-            onPressed:
-                opState.isLoading ? null : () => _handleDelete(item),
+          ],
+        );
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceWhite,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.borderLight),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x060B1B3D),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
+          child: isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        orderAvatar,
+                        const SizedBox(width: 12),
+                        Expanded(child: detailsColumn),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Divider(height: 1, color: AppColors.borderLight),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: actionButtons,
+                    ),
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    orderAvatar,
+                    const SizedBox(width: 14),
+                    Expanded(child: detailsColumn),
+                    const SizedBox(width: 8),
+                    actionButtons,
+                  ],
+                ),
+        );
+      },
     );
   }
 }

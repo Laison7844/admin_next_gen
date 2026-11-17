@@ -17,7 +17,7 @@ class SectionPreviewDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 900, maxHeight: 720),
         child: Column(
@@ -78,7 +78,7 @@ class SectionPreviewDialog extends StatelessWidget {
 
             // Footer
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: const BoxDecoration(
                 color: AppColors.surfaceWhite,
                 border: Border(
@@ -86,16 +86,26 @@ class SectionPreviewDialog extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
               ),
-              child: Row(
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 10,
                 children: [
-                  const Icon(Icons.info_outline,
-                      size: 16, color: AppColors.textSecondary),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Preview displays current working draft payload.',
-                    style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.info_outline,
+                          size: 16, color: AppColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Preview displays current working draft payload.',
+                          style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ],
                   ),
-                  const Spacer(),
                   OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Close Preview'),

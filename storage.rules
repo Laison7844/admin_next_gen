@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for NextGen Excellence Academy
+// Project: next-gen-excellence
+// Bucket: next-gen-excellence.firebasestorage.app
+//
+// NOTICE: Prepared for Phase 4.9. DO NOT deploy without administrative approval.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper function checking whether caller is the single verified administrator UID
+    function isAdmin() {
+      return request.auth != null &&
+          request.auth.uid == 'p6awFfdX9jRKAScGwvSU9OMXjm72';
+    }
+
+    // Helper function validating folder taxonomy
+    function isValidFolder(folder) {
+      return folder in ['homepage', 'courses', 'programs', 'gallery', 'general'];
+    }
+
+    // Helper function validating image upload payloads
+    function isValidImageUpload() {
+      return request.resource != null &&
+          request.resource.size <= 5 * 1024 * 1024 && // 5 MB max
+          request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    // Media library folder hierarchy
+    match /media/{folder}/{fileName} {
+      // 1. Public Read: Prospective students and website visitors may access images via download URLs
+      allow read: if true;
+
+      // 2. Upload (Create-Only): Strictly restricted to verified administrator UID, valid folder, and payload checks.
+      // Update is intentionally disallowed to preserve asset immutability and prevent cache poisoning.
+      allow create: if isAdmin() && isValidFolder(folder) && isValidImageUpload();
+
+      // 3. Deletion: Strictly restricted to verified administrator UID
+      allow delete: if isAdmin();
+    }
+
+    // Default deny for any other path in the storage bucket
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

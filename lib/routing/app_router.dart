@@ -7,12 +7,12 @@ import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/dashboard/presentation/admin_shell.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
-import '../features/dashboard/presentation/models/nav_item.dart';
-import '../features/dashboard/presentation/placeholder_screen.dart';
 import '../features/enquiries/presentation/enquiry_list_screen.dart';
 import '../features/home_cms/models/home_section_definition.dart';
 import '../features/home_cms/presentation/home_cms_screen.dart';
 import '../features/home_cms/presentation/standalone_section_screen.dart';
+import '../features/media/presentation/media_library_screen.dart';
+import '../features/testimonials/presentation/testimonials_screen.dart';
 import 'route_paths.dart';
 
 /// Helper to bridge a Dart Stream to a Flutter Listenable for GoRouter.
@@ -100,6 +100,36 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
+            path: RoutePaths.whyNextGen,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('why_nextgen'),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.learningModes,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('learning_modes'),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.pledge,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('pledge'),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.assessments,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('assessments'),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.bannerCta,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('banner_cta'),
+            ),
+          ),
+          GoRoute(
             path: RoutePaths.gallery,
             builder: (context, state) => StandaloneSectionScreen(
               section: HomeSectionDefinition.getById('gallery'),
@@ -112,6 +142,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
+            path: RoutePaths.contactFooter,
+            builder: (context, state) => StandaloneSectionScreen(
+              section: HomeSectionDefinition.getById('contact_footer'),
+            ),
+          ),
+          GoRoute(
             path: RoutePaths.settings,
             builder: (context, state) => StandaloneSectionScreen(
               section: HomeSectionDefinition.getById('contact_footer'),
@@ -121,21 +157,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: RoutePaths.enquiries,
             builder: (context, state) => const EnquiryListScreen(),
           ),
-          // Remaining non-implemented modules stay as placeholders
-          ...NavItem.items
-              .where((item) =>
-                  item.route == RoutePaths.testimonials ||
-                  item.route == RoutePaths.mediaLibrary)
-              .map(
-                (item) => GoRoute(
-                  path: item.route,
-                  builder: (context, state) => PlaceholderScreen(
-                    title: item.title,
-                    icon: item.icon,
-                    description: item.description,
-                  ),
-                ),
-              ),
+          GoRoute(
+            path: RoutePaths.mediaLibrary,
+            builder: (context, state) => const MediaLibraryScreen(),
+          ),
+          GoRoute(
+            path: RoutePaths.testimonials,
+            builder: (context, state) => const TestimonialsScreen(),
+          ),
         ],
       ),
     ],

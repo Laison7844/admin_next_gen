@@ -1,4 +1,5 @@
 import 'package:admin_next_gen/core/constants/admin_config.dart';
+import 'package:admin_next_gen/core/theme/app_typography.dart';
 import 'package:admin_next_gen/features/content/data/content_repository.dart';
 import 'package:admin_next_gen/features/content/models/cms_content_item.dart';
 import 'package:admin_next_gen/features/content/models/content_type.dart';
@@ -98,9 +99,24 @@ class FakeContentRepository implements ContentRepository {
     }
     drafts.remove(draftId);
   }
+
+  @override
+  Future<Set<String>> getPublishedDocIds(String contentType) async {
+    final prefix = '$contentType/';
+    return publicDocs.keys
+        .where((k) => k.startsWith(prefix))
+        .map((k) => k.substring(prefix.length))
+        .toSet();
+  }
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() {
+    AppTypography.useSystemFont = true;
+  });
+
   group('Phase 2 - Domain Models Tests', () {
     test('ContentType mapping returns correct collection names and defaults', () {
       expect(ContentType.courses.publicCollection, 'courses');

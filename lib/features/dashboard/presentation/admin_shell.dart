@@ -19,6 +19,7 @@ class AdminShell extends StatefulWidget {
 
 class _AdminShellState extends State<AdminShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isSidebarCollapsed = false;
 
   String _getPageTitle(String location) {
     for (final item in NavItem.items) {
@@ -45,10 +46,11 @@ class _AdminShellState extends State<AdminShell> {
           drawer: isDesktop
               ? null
               : Drawer(
-                  width: 260,
+                  width: 280,
                   backgroundColor: AppColors.sidebarNavy,
                   child: AdminSidebar(
                     currentRoute: location,
+                    isCollapsed: false,
                     onItemSelected: () {
                       if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
                         Navigator.of(context).pop();
@@ -61,6 +63,10 @@ class _AdminShellState extends State<AdminShell> {
               if (isDesktop)
                 AdminSidebar(
                   currentRoute: location,
+                  isCollapsed: _isSidebarCollapsed,
+                  onToggleCollapse: () {
+                    setState(() => _isSidebarCollapsed = !_isSidebarCollapsed);
+                  },
                 ),
               Expanded(
                 child: Column(
@@ -85,4 +91,3 @@ class _AdminShellState extends State<AdminShell> {
     );
   }
 }
-

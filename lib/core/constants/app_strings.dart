@@ -8,12 +8,18 @@ class AppStrings {
   // Navigation module titles
   static const String navDashboard = 'Dashboard';
   static const String navHome = 'Home';
-  static const String navAbout = 'About';
+  static const String navAbout = 'About Us';
   static const String navCourses = 'Courses';
-  static const String navPrograms = 'Programs';
+  static const String navPrograms = 'Special Programs';
+  static const String navWhyNextGen = 'Why NextGen';
+  static const String navLearningModes = 'Learning Modes';
+  static const String navPledge = 'Our Pledge';
+  static const String navAssessments = 'Assessments & Progress';
+  static const String navBannerCta = 'Banner CTA';
   static const String navGallery = 'Gallery';
   static const String navTestimonials = 'Testimonials';
   static const String navFaqs = 'FAQs';
+  static const String navContactFooter = 'Contact & Footer';
   static const String navEnquiries = 'Enquiries';
   static const String navMediaLibrary = 'Media Library';
   static const String navSettings = 'Settings';

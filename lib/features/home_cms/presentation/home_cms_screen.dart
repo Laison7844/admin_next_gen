@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/home_section_definition.dart';
-import 'widgets/collection_section_view.dart';
 import 'widgets/section_header_card.dart';
 import 'widgets/singleton_section_editor.dart';
 
@@ -15,244 +14,285 @@ class HomeCmsScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeCmsScreenState extends ConsumerState<HomeCmsScreen> {
+  static const List<String> _homepageSectionIds = [
+    'home_hero',
+    'feature_highlights',
+    'why_nextgen',
+    'learning_modes',
+    'pledge',
+    'assessments',
+    'banner_cta',
+  ];
+
+  late final List<HomeSectionDefinition> _homepageSections;
   int _selectedSectionIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _homepageSections = _homepageSectionIds
+        .map((id) => HomeSectionDefinition.getById(id))
+        .toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final sections = HomeSectionDefinition.sections;
-    final activeSection = sections[_selectedSectionIndex];
+    final activeSection = _homepageSections[_selectedSectionIndex];
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isDesktop = constraints.maxWidth >= 900;
+          final horizontalPadding = isDesktop ? 32.0 : 16.0;
+          final verticalPadding = isDesktop ? 28.0 : 20.0;
 
-          if (isDesktop) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left Sidebar: 13 Section Pills
-                Container(
-                  width: 280,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surfaceWhite,
-                    border: Border(
-                      right: BorderSide(color: AppColors.borderLight),
-                    ),
-                  ),
-                  child: _buildSectionSidebar(sections),
-                ),
+          return SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Page Title & Overview Header
+                    _buildPageHeader(isDesktop),
+                    const SizedBox(height: 20),
 
-                // Right Pane: Active Section Editor
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 28),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1100),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildSectionHeader(activeSection),
-                            const SizedBox(height: 24),
-                            _buildSectionBody(activeSection),
-                          ],
-                        ),
-                      ),
+                    // Homepage Sections Selector (7 Focused Homepage Modules)
+                    _buildSectionSelector(isDesktop),
+                    const SizedBox(height: 24),
+
+                    // Active Section Header Details
+                    SectionHeaderCard(section: activeSection),
+                    const SizedBox(height: 24),
+
+                    // Focused Singleton Content Editor
+                    SingletonSectionEditor(
+                      key: ValueKey(activeSection.id),
+                      section: activeSection,
                     ),
-                  ),
+                    const SizedBox(height: 32),
+
+                    // Cross-Module Sidebar Discovery Callout
+                    _buildSidebarDiscoveryNotice(),
+                  ],
                 ),
-              ],
-            );
-          } else {
-            // Mobile / Tablet Stacked Layout
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildMobileSectionSelector(sections),
-                  const SizedBox(height: 20),
-                  _buildSectionHeader(activeSection),
-                  const SizedBox(height: 20),
-                  _buildSectionBody(activeSection),
-                ],
               ),
-            );
-          }
+            ),
+          );
         },
       ),
     );
   }
 
-  Widget _buildSectionSidebar(List<HomeSectionDefinition> sections) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: AppColors.borderLight)),
+  Widget _buildPageHeader(bool isDesktop) {
+    return Container(
+      padding: EdgeInsets.all(isDesktop ? 22 : 14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060B1B3D),
+            blurRadius: 10,
+            offset: Offset(0, 2),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primaryNavy,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.home_outlined,
+              color: AppColors.primaryGold,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      'Home',
+                      style: AppTypography.headingMedium(
+                        color: AppColors.primaryNavy,
+                      ).copyWith(fontSize: isDesktop ? 22 : 18),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.softGoldBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                            color: AppColors.primaryGold.withValues(alpha: 0.3)),
+                      ),
+                      child: const Text(
+                        'Homepage Content',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryNavy,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Manage the content displayed on your website homepage.',
+                  style: AppTypography.bodyMedium(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionSelector(bool isDesktop) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                'Website Sections',
-                style: AppTypography.headingSmall().copyWith(fontSize: 18),
+              const Text(
+                'Homepage Sections',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryNavy,
+                ),
               ),
-              const SizedBox(height: 4),
               Text(
-                '13 Home Page Content Modules',
-                style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                '(${_homepageSections.length} sections)',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (int i = 0; i < _homepageSections.length; i++) ...[
+                  _buildSectionTab(i, _homepageSections[i]),
+                  if (i < _homepageSections.length - 1)
+                    const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTab(int index, HomeSectionDefinition section) {
+    final isSelected = index == _selectedSectionIndex;
+
+    return Material(
+      color: isSelected ? AppColors.primaryNavy : AppColors.backgroundLight,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () {
+          setState(() => _selectedSectionIndex = index);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? AppColors.primaryNavy : AppColors.borderLight,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                section.icon,
+                size: 16,
+                color: isSelected
+                    ? AppColors.primaryGold
+                    : AppColors.primaryNavy,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                section.title,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected
+                      ? AppColors.surfaceWhite
+                      : AppColors.textPrimary,
+                ),
               ),
             ],
           ),
         ),
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: sections.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 2),
-            itemBuilder: (context, index) {
-              final section = sections[index];
-              final isSelected = index == _selectedSectionIndex;
-
-              return Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                child: Material(
-                  color: isSelected
-                      ? AppColors.primaryNavy
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () {
-                      setState(() => _selectedSectionIndex = index);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            section.icon,
-                            size: 18,
-                            color: isSelected
-                                ? AppColors.primaryGold
-                                : AppColors.primaryNavy,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              section.title,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? AppColors.surfaceWhite
-                                    : AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.white.withValues(alpha: 0.18)
-                                  : AppColors.backgroundLight,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              section.isSingleton ? 'Section' : 'Collection',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? AppColors.surfaceWhite
-                                    : AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildMobileSectionSelector(List<HomeSectionDefinition> sections) {
+  Widget _buildSidebarDiscoveryNotice() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceWhite,
+        color: AppColors.softBlueBg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: AppColors.infoBlue.withValues(alpha: 0.2)),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: _selectedSectionIndex,
-          isExpanded: true,
-          items: [
-            for (int i = 0; i < sections.length; i++)
-              DropdownMenuItem(
-                value: i,
-                child: Row(
-                  children: [
-                    Icon(sections[i].icon,
-                        size: 18, color: AppColors.primaryNavy),
-                    const SizedBox(width: 10),
-                    Text(
-                      sections[i].title,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const Spacer(),
-                    Text(
-                      sections[i].isSingleton ? 'Section' : 'Collection',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
+      child: const Row(
+        children: [
+          Icon(Icons.info_outline, size: 20, color: AppColors.infoBlue),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Looking to manage Courses, Special Programs, Gallery, Testimonials, or FAQs? '
+              'Access them anytime directly from the main navigation sidebar.',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.primaryNavy,
+                fontWeight: FontWeight.w500,
               ),
-          ],
-          onChanged: (val) {
-            if (val != null) {
-              setState(() => _selectedSectionIndex = val);
-            }
-          },
-        ),
+            ),
+          ),
+        ],
       ),
     );
-  }
-
-  Widget _buildSectionHeader(HomeSectionDefinition section) {
-    return SectionHeaderCard(section: section);
-  }
-
-  Widget _buildSectionBody(HomeSectionDefinition section) {
-    if (section.isSingleton) {
-      return SingletonSectionEditor(
-        key: ValueKey(section.id),
-        section: section,
-      );
-    } else {
-      return CollectionSectionView(
-        key: ValueKey(section.id),
-        section: section,
-      );
-    }
   }
 }

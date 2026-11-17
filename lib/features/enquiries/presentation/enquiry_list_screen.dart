@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/phone_dialer.dart';
 import '../models/enquiry_item.dart';
+import '../models/enquiry_page.dart';
 import '../providers/enquiry_provider.dart';
 import 'widgets/enquiry_detail_dialog.dart';
 
@@ -18,7 +19,19 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
   String _searchQuery = '';
   String _selectedProgram = 'All';
   String _selectedStatus = 'All'; // 'All', 'Active', 'Archived'
+  String _selectedWorkflow = 'All'; // 'All', 'New', 'Contacted', 'Enrolled', 'Closed'
   bool _sortNewestFirst = true;
+
+  void _applyFilter() {
+    ref.read(enquiryPaginationControllerProvider.notifier).setFilter(
+          EnquiryFilter(
+            searchQuery: _searchQuery,
+            program: _selectedProgram,
+            status: _selectedStatus,
+            workflowStatus: _selectedWorkflow,
+          ),
+        );
+  }
 
   void _openDetails(EnquiryItem enquiry) {
     showDialog(
@@ -104,7 +117,7 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final enquiriesAsync = ref.watch(enquiryListProvider);
+    final pagState = ref.watch(enquiryPaginationControllerProvider);
     final opState = ref.watch(enquiryOperationControllerProvider);
 
     return Scaffold(
@@ -127,16 +140,18 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
                   children: [
                     _buildHeader(isDesktop),
                     const SizedBox(height: 24),
-                    enquiriesAsync.when(
-                      loading: () => const Center(
+                    if (pagState.isLoading && pagState.currentPage == null)
+                      const Center(
                         child: Padding(
                           padding: EdgeInsets.all(48.0),
                           child: CircularProgressIndicator(),
                         ),
-                      ),
-                      error: (err, stack) => _buildErrorCard(err),
-                      data: (enquiries) => _buildContent(enquiries, opState),
-                    ),
+                      )
+                    else if (pagState.errorMessage != null &&
+                        pagState.currentPage == null)
+                      _buildErrorCard(pagState.errorMessage!)
+                    else
+                      _buildContent(pagState, opState),
                   ],
                 ),
               ),
@@ -149,7 +164,7 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
 
   Widget _buildHeader(bool isDesktop) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isDesktop ? 24 : 14),
       decoration: BoxDecoration(
         color: AppColors.surfaceWhite,
         borderRadius: BorderRadius.circular(12),
@@ -174,18 +189,20 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       'Admissions Enquiries',
                       style: AppTypography.headingMedium().copyWith(fontSize: 22),
                     ),
-                    const SizedBox(width: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryGold.withValues(alpha: 0.18),
+                        color: AppColors.primaryGold.withAlpha(46),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
@@ -201,7 +218,7 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Manage admissions enquiries submitted through the public website (enquiries collection).',
+                  'Manage admissions enquiries submitted through the public website.',
                   style: AppTypography.bodyMedium(
                       color: AppColors.textSecondary),
                 ),
@@ -226,7 +243,7 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
       decoration: BoxDecoration(
         color: AppColors.errorBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.errorRed.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.errorRed.withAlpha(76)),
       ),
       child: Column(
         children: [
@@ -246,7 +263,7 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
             icon: const Icon(Icons.refresh, size: 16),
             label: const Text('Retry Fetch'),
             onPressed: () {
-              ref.read(enquiryOperationControllerProvider.notifier).refresh();
+              ref.read(enquiryPaginationControllerProvider.notifier).retry();
             },
           ),
         ],
@@ -255,82 +272,91 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
   }
 
   Widget _buildContent(
-    List<EnquiryItem> allEnquiries,
+    EnquiryPaginationState pagState,
     EnquiryOperationState opState,
   ) {
+    final items = pagState.items;
     final now = DateTime.now();
     final sevenDaysAgo = now.subtract(const Duration(days: 7));
 
-    // Summary statistics
-    final totalCount = allEnquiries.length;
-    final activeCount = allEnquiries.where((e) => e.status).length;
-    final recentCount = allEnquiries.where((e) {
+    // Summary statistics for current page
+    final totalCount = items.length;
+    final activeCount = items.where((e) => e.status).length;
+    final recentCount = items.where((e) {
       if (e.createdAt == null) return false;
       return e.createdAt!.isAfter(sevenDaysAgo);
     }).length;
 
     // Distinct programs
-    final programs = allEnquiries
+    final loadedPrograms = items
         .map((e) => e.program.trim())
         .where((p) => p.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+        .toSet();
+    final programs = loadedPrograms.toList()..sort();
 
-    // Client-side filtering
-    final query = _searchQuery.trim().toLowerCase();
-    var filtered = allEnquiries.where((e) {
-      // Search filter
-      if (query.isNotEmpty) {
-        final matchesName = e.name.toLowerCase().contains(query);
-        final matchesPhone = e.phone.toLowerCase().contains(query);
-        if (!matchesName && !matchesPhone) return false;
-      }
-
-      // Program filter
-      if (_selectedProgram != 'All' && e.program.trim() != _selectedProgram) {
-        return false;
-      }
-
-      // Status filter
-      if (_selectedStatus == 'Active' && !e.status) return false;
-      if (_selectedStatus == 'Archived' && e.status) return false;
-
-      return true;
-    }).toList();
-
-    // Sorting
-    filtered.sort((a, b) {
+    // Client-side sort toggle
+    final displayItems = List<EnquiryItem>.from(items);
+    displayItems.sort((a, b) {
       final dtA = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       final dtB = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-      return _sortNewestFirst ? dtB.compareTo(dtA) : dtA.compareTo(dtB);
+      final cmp = _sortNewestFirst ? dtB.compareTo(dtA) : dtA.compareTo(dtB);
+      if (cmp != 0) return cmp;
+      return b.phone.compareTo(a.phone);
     });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Notice Banner
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.softBlueBg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.infoBlue.withAlpha(51)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline, size: 18, color: AppColors.infoBlue),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Showing latest 100 admissions enquiries. Statistics reflect loaded records.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.primaryNavy,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
         // Summary Metrics Grid
         LayoutBuilder(
           builder: (context, constraints) {
-            final isWide = constraints.maxWidth > 700;
+            final isWide = constraints.maxWidth >= 900;
+            final isMobile = constraints.maxWidth < 500;
             return GridView.count(
-              crossAxisCount: isWide ? 4 : 2,
+              crossAxisCount: isWide ? 4 : (isMobile ? 1 : 2),
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: isWide ? 1.8 : 1.5,
+              childAspectRatio: isWide ? 2.2 : (isMobile ? 3.4 : 2.0),
               children: [
                 _buildMetricCard(
-                  title: 'Total Enquiries',
+                  title: 'Loaded Enquiries',
                   value: '$totalCount',
-                  subtitle: 'All-time submissions',
+                  subtitle: 'Latest 100 loaded',
                   icon: Icons.all_inbox_rounded,
                   iconColor: AppColors.infoBlue,
                   bgColor: AppColors.softBlueBg,
                 ),
                 _buildMetricCard(
-                  title: 'Active / Received',
+                  title: 'Active (Loaded)',
                   value: '$activeCount',
                   subtitle: 'Pending follow-up',
                   icon: Icons.check_circle_outline,
@@ -338,17 +364,17 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
                   bgColor: const Color(0xFFECFDF5),
                 ),
                 _buildMetricCard(
-                  title: 'Last 7 Days',
+                  title: 'Last 7 Days (Loaded)',
                   value: '$recentCount',
-                  subtitle: 'Recently submitted',
+                  subtitle: 'From loaded records',
                   icon: Icons.schedule_rounded,
                   iconColor: AppColors.primaryGold,
                   bgColor: AppColors.softGoldBg,
                 ),
                 _buildMetricCard(
-                  title: 'Programs',
+                  title: 'Programs (Loaded)',
                   value: '${programs.length}',
-                  subtitle: 'Distinct inquiries',
+                  subtitle: 'From loaded records',
                   icon: Icons.school_outlined,
                   iconColor: AppColors.accentCyan,
                   bgColor: AppColors.softGrayBg,
@@ -395,7 +421,10 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
                               const BorderSide(color: AppColors.borderLight),
                         ),
                       ),
-                      onChanged: (val) => setState(() => _searchQuery = val),
+                      onChanged: (val) {
+                        setState(() => _searchQuery = val);
+                        _applyFilter();
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -436,10 +465,38 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
                     ChoiceChip(
                       label: Text(s),
                       selected: _selectedStatus == s,
-                      onSelected: (_) => setState(() => _selectedStatus = s),
+                      onSelected: (_) {
+                        setState(() => _selectedStatus = s);
+                        _applyFilter();
+                      },
                       selectedColor: AppColors.primaryNavy,
                       labelStyle: TextStyle(
                         color: _selectedStatus == s
+                            ? AppColors.surfaceWhite
+                            : AppColors.textPrimary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Workflow:',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  for (final w in ['All', 'New', 'Contacted', 'Enrolled', 'Closed'])
+                    ChoiceChip(
+                      label: Text(w),
+                      selected: _selectedWorkflow == w,
+                      onSelected: (_) {
+                        setState(() => _selectedWorkflow = w);
+                        _applyFilter();
+                      },
+                      selectedColor: AppColors.primaryNavy,
+                      labelStyle: TextStyle(
+                        color: _selectedWorkflow == w
                             ? AppColors.surfaceWhite
                             : AppColors.textPrimary,
                         fontSize: 12,
@@ -463,7 +520,9 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: _selectedProgram,
+                        value: programs.contains(_selectedProgram)
+                            ? _selectedProgram
+                            : 'All',
                         isDense: true,
                         items: [
                           const DropdownMenuItem(
@@ -479,6 +538,7 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
                         onChanged: (val) {
                           if (val != null) {
                             setState(() => _selectedProgram = val);
+                            _applyFilter();
                           }
                         },
                       ),
@@ -492,7 +552,7 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
         const SizedBox(height: 20),
 
         // List / Empty State
-        if (filtered.isEmpty)
+        if (displayItems.isEmpty)
           Container(
             padding: const EdgeInsets.all(48),
             decoration: BoxDecoration(
@@ -509,14 +569,14 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  allEnquiries.isEmpty
+                  pagState.filter.isDefault
                       ? 'No admissions enquiries received yet'
                       : 'No enquiries match your search criteria',
                   style: AppTypography.headingSmall(),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  allEnquiries.isEmpty
+                  pagState.filter.isDefault
                       ? 'Admissions form submissions from next-gen-excellence.web.app will appear here automatically.'
                       : 'Try clearing your search query or program/status filters.',
                   textAlign: TextAlign.center,
@@ -529,14 +589,112 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: filtered.length,
+            itemCount: displayItems.length,
             separatorBuilder: (ctx, i) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final item = filtered[index];
+              final item = displayItems[index];
               return _buildEnquiryCard(item);
             },
           ),
+
+        const SizedBox(height: 16),
+        _buildPaginationBar(pagState),
       ],
+    );
+  }
+
+  Widget _buildPaginationBar(EnquiryPaginationState pagState) {
+    final pageIndex = pagState.pageIndex;
+    final totalOnPage = pagState.totalOnPage;
+    final hasNext = pagState.hasNextPage;
+    final hasPrev = pagState.hasPreviousPage;
+    final isLoading = pagState.isLoading;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 10,
+        children: [
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              Text(
+                'Page $pageIndex',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: AppColors.primaryNavy,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundLight,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: Text(
+                  'Showing $totalOnPage record${totalOnPage == 1 ? '' : 's'}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (isLoading)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.chevron_left, size: 18),
+                label: const Text('Previous'),
+                onPressed: (!hasPrev || isLoading)
+                    ? null
+                    : () {
+                        ref
+                            .read(enquiryPaginationControllerProvider.notifier)
+                            .previousPage();
+                      },
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryNavy,
+                  foregroundColor: AppColors.surfaceWhite,
+                ),
+                icon: const Icon(Icons.chevron_right, size: 18),
+                label: const Text('Next'),
+                onPressed: (!hasNext || isLoading)
+                    ? null
+                    : () {
+                        ref
+                            .read(enquiryPaginationControllerProvider.notifier)
+                            .nextPage();
+                      },
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -592,6 +750,7 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
                     color: AppColors.textPrimary,
                   ),
                 ),
+                const SizedBox(height: 1),
                 Text(
                   subtitle,
                   maxLines: 1,
@@ -610,153 +769,242 @@ class _EnquiryListScreenState extends ConsumerState<EnquiryListScreen> {
   }
 
   Widget _buildEnquiryCard(EnquiryItem item) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceWhite,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderLight),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x060B1B3D),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Initial Avatar
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: AppColors.backgroundLight,
-            child: Text(
-              item.name.isNotEmpty ? item.name[0].toUpperCase() : '#',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryNavy,
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
+    final statusColor =
+        item.status ? AppColors.successGreen : AppColors.textSecondary;
+    final statusLabel = item.status ? 'ACTIVE' : 'ARCHIVED';
 
-          // Details column
-          Expanded(
-            child: Column(
+    Color workflowBg;
+    Color workflowText;
+    switch (item.workflowStatus.toLowerCase()) {
+      case EnquiryWorkflowStatus.contacted:
+        workflowBg = AppColors.infoBlue.withAlpha(38);
+        workflowText = AppColors.infoBlue;
+        break;
+      case EnquiryWorkflowStatus.enrolled:
+        workflowBg = AppColors.successGreen.withAlpha(38);
+        workflowText = AppColors.successGreen;
+        break;
+      case EnquiryWorkflowStatus.closed:
+        workflowBg = AppColors.textSecondary.withAlpha(38);
+        workflowText = AppColors.textSecondary;
+        break;
+      case EnquiryWorkflowStatus.newStatus:
+      default:
+        workflowBg = AppColors.primaryGold.withAlpha(46);
+        workflowText = AppColors.primaryNavy;
+        break;
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.borderLight),
+      ),
+      color: AppColors.surfaceWhite,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Row: Student Name + Badges
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        item.name.isNotEmpty ? item.name : 'Prospective Student',
-                        style: AppTypography.headingSmall().copyWith(fontSize: 16),
-                        overflow: TextOverflow.ellipsis,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name.isEmpty ? 'Anonymous Parent' : item.name,
+                        style: AppTypography.headingSmall().copyWith(
+                          fontSize: 17,
+                          color: AppColors.primaryNavy,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Status Badge
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.phone_outlined,
+                              size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            item.phone,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          const Icon(Icons.schedule,
+                              size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDate(item.createdAt),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    // Active/Archived Badge
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: item.status
-                            ? const Color(0xFFECFDF5)
-                            : AppColors.softGrayBg,
-                        borderRadius: BorderRadius.circular(4),
+                        color: statusColor.withAlpha(38),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        item.status ? 'ACTIVE' : 'ARCHIVED',
+                        statusLabel,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: item.status
-                              ? AppColors.successGreen
-                              : AppColors.textSecondary,
+                          color: statusColor,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    // Workflow Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: workflowBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        EnquiryWorkflowStatus.displayName(item.workflowStatus)
+                            .toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: workflowText,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.phone_outlined,
-                        size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      item.phone,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryNavy,
-                      ),
-                    ),
-                    if (item.program.isNotEmpty) ...[
-                      const SizedBox(width: 12),
-                      const Icon(Icons.school_outlined,
-                          size: 14, color: AppColors.primaryGold),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          item.program,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(width: 12),
-                    const Icon(Icons.access_time,
-                        size: 13, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDate(item.createdAt),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Program Chip
+            if (item.program.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.softBlueBg,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                      color: AppColors.infoBlue.withAlpha(51)),
+                ),
+                child: Text(
+                  item.program,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryNavy,
+                  ),
+                ),
+              ),
+
+            // Enquiry Message Box
+            if (item.message.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  item.message,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+
+            // Admin Notes Indicator
+            if (item.adminNotes.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.sticky_note_2_outlined,
+                      size: 14, color: AppColors.primaryGold),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Admin Note: ${item.adminNotes}',
                       style: const TextStyle(
                         fontSize: 12,
+                        fontStyle: FontStyle.italic,
                         color: AppColors.textSecondary,
                       ),
                     ),
-                  ],
-                ),
-                if (item.message.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    item.message,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodySmall(color: AppColors.textSecondary),
                   ),
                 ],
+              ),
+            ],
+
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppColors.borderLight),
+            const SizedBox(height: 12),
+
+            // Action Buttons Row
+            Row(
+              children: [
+                // Quick Call
+                TextButton.icon(
+                  icon: const Icon(Icons.call, size: 16),
+                  label: const Text('Call'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.successGreen,
+                  ),
+                  onPressed: () => _handleCall(item),
+                ),
+                const SizedBox(width: 8),
+
+                // Details & Workflow Dialog
+                Tooltip(
+                  message: 'View Details',
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.edit_note_rounded, size: 18),
+                    label: const Text('Details & Workflow'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primaryNavy,
+                    ),
+                    onPressed: () => _openDetails(item),
+                  ),
+                ),
+                const Spacer(),
+
+                // Delete Action
+                IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      size: 18, color: AppColors.textSecondary),
+                  tooltip: 'Delete Enquiry',
+                  onPressed: () => _handleDelete(item),
+                ),
               ],
             ),
-          ),
-          const SizedBox(width: 10),
-
-          // Actions
-          IconButton(
-            tooltip: 'Call Phone',
-            icon: const Icon(Icons.phone, size: 20),
-            color: AppColors.primaryGold,
-            onPressed: () => _handleCall(item),
-          ),
-          IconButton(
-            tooltip: 'View Details',
-            icon: const Icon(Icons.visibility_outlined, size: 20),
-            color: AppColors.primaryNavy,
-            onPressed: () => _openDetails(item),
-          ),
-          IconButton(
-            tooltip: 'Delete Enquiry',
-            icon: const Icon(Icons.delete_outline, size: 20),
-            color: AppColors.errorRed,
-            onPressed: () => _handleDelete(item),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
