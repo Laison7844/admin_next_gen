@@ -37,7 +37,13 @@ class AdminSidebar extends ConsumerWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width: isCollapsed ? 72 : 260,
-      color: AppColors.sidebarNavy,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.sidebarNavy, Color(0xFF0A1937)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
       child: Column(
         children: [
           // Academy Branding Header
@@ -48,7 +54,7 @@ class AdminSidebar extends ConsumerWidget {
             child: ListView(
               padding: EdgeInsets.symmetric(
                 horizontal: isCollapsed ? 8 : 12,
-                vertical: 12,
+                vertical: 16,
               ),
               children: [
                 for (final group in groups) ...[
@@ -123,9 +129,7 @@ class AdminSidebar extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0xFF1E325C), width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFF1E325C), width: 1)),
       ),
       child: Row(
         children: [
@@ -180,9 +184,7 @@ class AdminSidebar extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   'Excellence Academy CMS',
-                  style: AppTypography.bodySmall(
-                    color: AppColors.primaryGold,
-                  ),
+                  style: AppTypography.bodySmall(color: AppColors.primaryGold),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -229,8 +231,10 @@ class AdminSidebar extends ConsumerWidget {
   }
 
   Widget _buildNavItem(BuildContext context, NavItem item) {
-    final isActive = currentRoute == item.route ||
-        (item.route == '/dashboard' && (currentRoute == '/' || currentRoute.isEmpty));
+    final isActive =
+        currentRoute == item.route ||
+        (item.route == '/dashboard' &&
+            (currentRoute == '/' || currentRoute.isEmpty));
 
     if (isCollapsed) {
       return Tooltip(
@@ -252,7 +256,7 @@ class AdminSidebar extends ConsumerWidget {
               height: 44,
               decoration: BoxDecoration(
                 color: isActive ? AppColors.sidebarActive : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(11),
                 border: isActive
                     ? const Border(
                         left: BorderSide(
@@ -277,73 +281,92 @@ class AdminSidebar extends ConsumerWidget {
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: () {
-          onItemSelected?.call();
-          if (!isActive) {
-            context.go(item.route);
-          }
-        },
-        borderRadius: BorderRadius.circular(8),
-        hoverColor: AppColors.sidebarHover,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 9,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final hasRoomForLabel = constraints.maxWidth >= 112;
+        final itemContent = Container(
+          height: 44,
+          padding: EdgeInsets.symmetric(
+            horizontal: hasRoomForLabel ? 12 : 4,
+            vertical: 8,
           ),
           decoration: BoxDecoration(
-            color: isActive ? AppColors.sidebarActive : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: isActive
+                ? AppColors.sidebarActive.withValues(alpha: 0.82)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
             border: isActive
                 ? const Border(
-                    left: BorderSide(
-                      color: AppColors.primaryGold,
-                      width: 3.5,
-                    ),
+                    left: BorderSide(color: AppColors.primaryGold, width: 3.5),
                   )
                 : null,
           ),
-          child: Row(
-            children: [
-              Icon(
-                item.icon,
-                size: 19,
-                color: isActive
-                    ? AppColors.primaryGold
-                    : const Color(0xFF9FB0D0),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Text(
-                  item.title,
-                  style: TextStyle(
-                    fontSize: 13,
+          child: hasRoomForLabel
+              ? Row(
+                  children: [
+                    Icon(
+                      item.icon,
+                      size: 19,
+                      color: isActive
+                          ? AppColors.primaryGold
+                          : const Color(0xFF9FB0D0),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isActive
+                              ? AppColors.surfaceWhite
+                              : const Color(0xFFE2E8F0),
+                          fontWeight: isActive
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isActive)
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryGold,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                )
+              : Center(
+                  child: Icon(
+                    item.icon,
+                    size: 19,
                     color: isActive
                         ? AppColors.primaryGold
-                        : const Color(0xFFE2E8F0),
-                    fontWeight:
-                        isActive ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (isActive)
-                Container(
-                  width: 5,
-                  height: 5,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primaryGold,
-                    shape: BoxShape.circle,
+                        : const Color(0xFF9FB0D0),
                   ),
                 ),
-            ],
+        );
+
+        final clickableItem = Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(11),
+          child: InkWell(
+            onTap: () {
+              onItemSelected?.call();
+              if (!isActive) context.go(item.route);
+            },
+            borderRadius: BorderRadius.circular(11),
+            hoverColor: AppColors.sidebarHover,
+            child: itemContent,
           ),
-        ),
-      ),
+        );
+        return hasRoomForLabel
+            ? clickableItem
+            : Tooltip(message: item.title, child: clickableItem);
+      },
     );
   }
 
@@ -353,9 +376,7 @@ class AdminSidebar extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: const BoxDecoration(
           color: Color(0xFF07142E),
-          border: Border(
-            top: BorderSide(color: Color(0xFF1E325C), width: 1),
-          ),
+          border: Border(top: BorderSide(color: Color(0xFF1E325C), width: 1)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -393,9 +414,7 @@ class AdminSidebar extends ConsumerWidget {
       padding: const EdgeInsets.all(14),
       decoration: const BoxDecoration(
         color: Color(0xFF07142E),
-        border: Border(
-          top: BorderSide(color: Color(0xFF1E325C), width: 1),
-        ),
+        border: Border(top: BorderSide(color: Color(0xFF1E325C), width: 1)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

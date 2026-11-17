@@ -18,7 +18,7 @@ class AdminHeader extends ConsumerWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize => const Size.fromHeight(64);
+  Size get preferredSize => const Size.fromHeight(72);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,12 +32,19 @@ class AdminHeader extends ConsumerWidget implements PreferredSizeWidget {
 
         return Container(
           height: preferredSize.height,
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20),
-          decoration: const BoxDecoration(
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 28),
+          decoration: BoxDecoration(
             color: AppColors.surfaceWhite,
-            border: Border(
+            border: const Border(
               bottom: BorderSide(color: AppColors.borderLight, width: 1),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryNavy.withValues(alpha: 0.025),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Row(
             children: [
@@ -47,9 +54,12 @@ class AdminHeader extends ConsumerWidget implements PreferredSizeWidget {
                   onPressed: onOpenDrawer,
                   tooltip: 'Open navigation',
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
                 ),
-              if (showDrawerButton) const SizedBox(width: 8),
+              if (showDrawerButton) const SizedBox(width: 10),
               Expanded(
                 child: Row(
                   children: [
@@ -57,7 +67,7 @@ class AdminHeader extends ConsumerWidget implements PreferredSizeWidget {
                       child: Text(
                         title,
                         style: AppTypography.headingSmall().copyWith(
-                          fontSize: isMobile ? 16 : 19,
+                          fontSize: isMobile ? 16 : 18,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -67,17 +77,23 @@ class AdminHeader extends ConsumerWidget implements PreferredSizeWidget {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2.5),
+                          horizontal: 9,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.softBlueBg,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.borderLight),
                         ),
                         child: Text(
                           'CMS Admin',
-                          style: AppTypography.bodySmall(
-                            color: AppColors.primaryNavy,
-                          ).copyWith(fontSize: 10.5, fontWeight: FontWeight.w600),
+                          style:
+                              AppTypography.bodySmall(
+                                color: AppColors.primaryNavy,
+                              ).copyWith(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ),
                     ],
@@ -88,12 +104,12 @@ class AdminHeader extends ConsumerWidget implements PreferredSizeWidget {
               // User chip
               Container(
                 padding: EdgeInsets.symmetric(
-                  horizontal: isVeryNarrow ? 6 : 10,
-                  vertical: 6,
+                  horizontal: isVeryNarrow ? 7 : 12,
+                  vertical: 7,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.softGrayBg,
-                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.softBlueBg,
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.borderLight),
                 ),
                 child: Row(
@@ -125,8 +141,11 @@ class AdminHeader extends ConsumerWidget implements PreferredSizeWidget {
               ),
               const SizedBox(width: 6),
               IconButton(
-                icon: const Icon(Icons.logout,
-                    color: AppColors.textSecondary, size: 20),
+                icon: const Icon(
+                  Icons.logout,
+                  color: AppColors.textSecondary,
+                  size: 20,
+                ),
                 tooltip: AppStrings.logout,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),

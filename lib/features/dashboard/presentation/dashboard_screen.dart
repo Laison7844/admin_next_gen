@@ -21,11 +21,17 @@ class DashboardScreen extends ConsumerWidget {
     final userEmail = authState.value?.email ?? 'Administrator';
     final dashboardData = ref.watch(dashboardAnalyticsProvider);
     final refreshController = ref.watch(dashboardRefreshControllerProvider);
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.fromLTRB(
+          isCompact ? 16 : 28,
+          24,
+          isCompact ? 16 : 28,
+          36,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -105,14 +111,14 @@ class DashboardScreen extends ConsumerWidget {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 20 : 28),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [AppColors.primaryNavy, AppColors.mediumNavy],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
             color: AppColors.shadowColor,
@@ -144,8 +150,9 @@ class DashboardScreen extends ConsumerWidget {
                             color: AppColors.primaryGold.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color:
-                                  AppColors.primaryGold.withValues(alpha: 0.4),
+                              color: AppColors.primaryGold.withValues(
+                                alpha: 0.4,
+                              ),
                             ),
                           ),
                           child: Row(
@@ -160,10 +167,13 @@ class DashboardScreen extends ConsumerWidget {
                               Flexible(
                                 child: Text(
                                   'Administrator Portal • Authorized Session',
-                                  style: AppTypography.bodySmall(
-                                    color: AppColors.lightGold,
-                                  ).copyWith(
-                                      fontWeight: FontWeight.w600, fontSize: 11),
+                                  style:
+                                      AppTypography.bodySmall(
+                                        color: AppColors.lightGold,
+                                      ).copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11,
+                                      ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -233,8 +243,9 @@ class DashboardScreen extends ConsumerWidget {
       ),
       child: Row(
         mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
-        mainAxisAlignment:
-            fullWidth ? MainAxisAlignment.spaceBetween : MainAxisAlignment.start,
+        mainAxisAlignment: fullWidth
+            ? MainAxisAlignment.spaceBetween
+            : MainAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -277,10 +288,7 @@ class DashboardScreen extends ConsumerWidget {
                 : const Icon(Icons.refresh, size: 16),
             label: Text(
               isLoading ? 'Refreshing...' : 'Refresh',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
         ],

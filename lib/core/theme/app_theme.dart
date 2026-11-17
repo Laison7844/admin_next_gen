@@ -5,7 +5,8 @@ import 'app_typography.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
-    final useFallback = AppTypography.useSystemFont || !AppTypography.hasBindings;
+    final useFallback =
+        AppTypography.useSystemFont || !AppTypography.hasBindings;
     final baseTextTheme = useFallback
         ? ThemeData.light().textTheme
         : GoogleFonts.interTextTheme();
@@ -52,12 +53,8 @@ class AppTheme {
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
-              bodyLarge: GoogleFonts.inter(
-                color: AppColors.textPrimary,
-              ),
-              bodyMedium: GoogleFonts.inter(
-                color: AppColors.textSecondary,
-              ),
+              bodyLarge: GoogleFonts.inter(color: AppColors.textPrimary),
+              bodyMedium: GoogleFonts.inter(color: AppColors.textSecondary),
               labelLarge: GoogleFonts.poppins(
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.2,
@@ -67,7 +64,7 @@ class AppTheme {
         color: AppColors.surfaceWhite,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: AppColors.borderLight, width: 1),
         ),
         margin: EdgeInsets.zero,
@@ -75,13 +72,13 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceWhite,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 17,
+        ),
         hintStyle: useFallback
             ? const TextStyle(fontSize: 14, color: AppColors.textMuted)
-            : GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.textMuted,
-              ),
+            : GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted),
         labelStyle: useFallback
             ? const TextStyle(
                 fontSize: 14,
@@ -94,23 +91,23 @@ class AppTheme {
                 color: AppColors.textSecondary,
               ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.borderLight),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.borderLight),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.primaryNavy, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.errorRed),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.errorRed, width: 2),
         ),
       ),
@@ -121,7 +118,7 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
           textStyle: useFallback
               ? const TextStyle(
@@ -145,14 +142,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(10),
           ),
           textStyle: useFallback
-              ? const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                )
-              : GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+              ? const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)
+              : GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
         ),
       ),
       dividerTheme: const DividerThemeData(

@@ -696,7 +696,11 @@ class SectionPreviewDialog extends StatelessWidget {
   // 11. GALLERY PREVIEW
   Widget _buildGalleryPreview() {
     final title = data['title']?.toString() ?? 'Gallery Item';
-    final category = data['category']?.toString() ?? 'Campus';
+    final rawCategory = data['category']?.toString().trim();
+    final rawTag = data['tag']?.toString().trim();
+    final category = (rawCategory != null && rawCategory.isNotEmpty)
+        ? rawCategory
+        : ((rawTag != null && rawTag.isNotEmpty) ? rawTag : 'Campus');
     final description = data['description']?.toString() ?? '';
     final image = data['image']?.toString();
 
@@ -990,7 +994,9 @@ class SectionPreviewDialog extends StatelessWidget {
       );
     }
 
-    final isNetwork = imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
+    final trimmed = imageUrl.trim();
+    final isNetwork =
+        trimmed.startsWith('http://') || trimmed.startsWith('https://');
 
     return Container(
       height: height,
@@ -1004,31 +1010,54 @@ class SectionPreviewDialog extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: isNetwork
             ? Image.network(
-                imageUrl,
+                trimmed,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _buildFallbackImage(imageUrl, label),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                        color: AppColors.primaryNavy,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (_, _, _) => _buildErrorState(label),
               )
-            : _buildFallbackImage(imageUrl, label),
+            : Image.asset(
+                trimmed,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _buildErrorState(label),
+              ),
       ),
     );
   }
 
-  Widget _buildFallbackImage(String path, String label) {
+  Widget _buildErrorState(String label) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.image, size: 36, color: AppColors.primaryNavy),
+            const Icon(Icons.broken_image_outlined,
+                size: 36, color: AppColors.textSecondary),
             const SizedBox(height: 6),
-            Text(label,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 2),
-            Text(path,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            Text(
+              'Unable to load $label',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
       ),

@@ -19,9 +19,9 @@ class AppColors {
   static const Color softGoldBg = Color(0xFFFFFBEB);
 
   // Surface & Background Colors
-  static const Color backgroundLight = Color(0xFFF8FAFC);
+  static const Color backgroundLight = Color(0xFFF5F7FB);
   static const Color surfaceWhite = Color(0xFFFFFFFF);
-  static const Color softBlueBg = Color(0xFFF0F5FF);
+  static const Color softBlueBg = Color(0xFFEEF3FF);
   static const Color softGrayBg = Color(0xFFF1F5F9);
 
   // Text Colors
@@ -32,7 +32,7 @@ class AppColors {
   static const Color textGold = Color(0xFFD97706);
 
   // Border & Divider Colors
-  static const Color borderLight = Color(0xFFE2E8F0);
+  static const Color borderLight = Color(0xFFE4E9F2);
   static const Color borderMedium = Color(0xFFCBD5E1);
   static const Color borderGold = Color(0xFFFCD34D);
 
